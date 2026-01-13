@@ -1,0 +1,96 @@
+import React, { useEffect, useState } from "react";
+import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeScreen } from "../../components/SafeScreen";
+import { Colors } from "../../theme/colors";
+import { useAuth } from "../../context/AuthContext";
+import { api } from "../../api/client";
+import { Card } from "../../components/Card";
+import { PrimaryButton } from "../../components/PrimaryButton";
+
+export function EmployerHomeScreen({ navigation }) {
+  const { user, signOut } = useAuth();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  async function load() {
+    try {
+      setLoading(true);
+      const data = await api.listMyJobs(user.id);
+      setItems(data);
+    } catch (e) {
+      Alert.alert("Xəta", e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const unsub = navigation.addListener("focus", load);
+    load();
+    return unsub;
+  }, [navigation]);
+
+  return (
+    <SafeScreen>
+      <View style={styles.top}>
+        <View>
+          <Text style={styles.title}>Satıcı paneli</Text>
+          <Text style={styles.sub}>Vakansiyalarım</Text>
+        </View>
+        <Pressable onPress={signOut} style={styles.logoutBtn}>
+          <Text style={styles.logoutText}>Çıxış</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.body}>
+        <PrimaryButton title="Vakansiya yarat" onPress={() => navigation.navigate("EmployerCreateJob")} />
+        <View style={{ height: 12 }} />
+
+        <FlatList
+          data={items}
+          keyExtractor={(it) => it.id}
+          refreshing={loading}
+          onRefresh={load}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          ListEmptyComponent={
+            <Text style={styles.empty}>Hələ vakansiya yoxdur. “Vakansiya yarat” ilə əlavə et.</Text>
+          }
+          renderItem={({ item }) => (
+            <Card style={{ marginBottom: 12 }}>
+              <Text style={styles.jobTitle}>{item.title}</Text>
+              <Text style={styles.jobMeta}>{item.wage || "—"}</Text>
+              <Text style={styles.jobDesc} numberOfLines={3}>{item.description}</Text>
+              {item.location?.address ? <Text style={styles.jobLoc} numberOfLines={2}>📍 {item.location.address}</Text> : null}
+            </Card>
+          )}
+        />
+      </View>
+    </SafeScreen>
+  );
+}
+
+const styles = StyleSheet.create({
+  top: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 12,
+    backgroundColor: Colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  title: { fontSize: 18, fontWeight: "900", color: Colors.text },
+  sub: { marginTop: 4, color: Colors.muted, fontWeight: "800" },
+  logoutBtn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: Colors.primarySoft },
+  logoutText: { color: Colors.primary, fontWeight: "900" },
+
+  body: { flex: 1, padding: 16 },
+  empty: { color: Colors.muted, textAlign: "center", marginTop: 22, fontWeight: "800" },
+
+  jobTitle: { fontSize: 16, fontWeight: "900", color: Colors.text },
+  jobMeta: { marginTop: 6, color: Colors.muted, fontWeight: "800" },
+  jobDesc: { marginTop: 8, color: Colors.text, lineHeight: 20 },
+  jobLoc: { marginTop: 10, color: Colors.muted, fontWeight: "800" },
+});
