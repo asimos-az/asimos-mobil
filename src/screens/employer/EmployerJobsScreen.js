@@ -32,14 +32,40 @@ export function EmployerJobsScreen() {
     return unsub;
   }, [navigation]);
 
+  function goNotifications() {
+    // Tab navigator içindən Root Stack screen-ə çıxmaq üçün parent-ə yönləndir.
+    const parent = navigation.getParent?.();
+    if (parent) parent.navigate("EmployerNotifications");
+    else navigation.navigate("EmployerNotifications");
+  }
+
+  function goMap() {
+    const parent = navigation.getParent?.();
+    if (parent) parent.navigate("EmployerMap");
+    else navigation.navigate("EmployerMap");
+  }
+
   return (
     <SafeScreen>
       <View style={styles.top}>
-        <View>
-          <Text style={styles.title}>Satıcı paneli</Text>
+        <Pressable onPress={goNotifications} style={styles.iconBtn}>
+          <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
+        </Pressable>
+
+        <View style={styles.titleWrap}>
+          <Text style={styles.title}>İşçi axtaran paneli</Text>
           <Text style={styles.sub}>Əlavə etdiyim elanlar</Text>
         </View>
-        <Ionicons name="briefcase-outline" size={22} color={Colors.muted} />
+
+        <Pressable
+          onPress={goMap}
+          style={styles.iconBtn}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Xəritə"
+        >
+          <Ionicons name="map-outline" size={22} color={Colors.primary} />
+        </Pressable>
       </View>
 
       <View style={styles.body}>
@@ -48,7 +74,7 @@ export function EmployerJobsScreen() {
           keyExtractor={(it) => it.id}
           refreshing={loading}
           onRefresh={load}
-          contentContainerStyle={{ paddingBottom: 24 }}
+          contentContainerStyle={{ paddingBottom: 120 }}
           ListEmptyComponent={
             <Text style={styles.empty}>Hələ elan yoxdur. Aşağıdakı “+” ilə yeni elan yarat.</Text>
           }
@@ -78,17 +104,35 @@ export function EmployerJobsScreen() {
 const styles = StyleSheet.create({
   top: {
     paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 12,
+    paddingTop: 16,
+    paddingBottom: 14,
     backgroundColor: Colors.card,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
+    gap: 12,
   },
-  title: { fontSize: 18, fontWeight: "900", color: Colors.text },
+  titleWrap: { flex: 1 },
+  title: { fontSize: 20, fontWeight: "900", color: Colors.text },
   sub: { marginTop: 4, color: Colors.muted, fontWeight: "800" },
+
+  iconBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
+  },
 
   body: { flex: 1, padding: 16 },
   empty: { color: Colors.muted, textAlign: "center", marginTop: 22, fontWeight: "800" },

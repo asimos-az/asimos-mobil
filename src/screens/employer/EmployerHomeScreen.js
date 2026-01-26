@@ -34,7 +34,7 @@ export function EmployerHomeScreen({ navigation }) {
     <SafeScreen>
       <View style={styles.top}>
         <View>
-          <Text style={styles.title}>Satıcı paneli</Text>
+          <Text style={styles.title}>İşçi axtaran paneli</Text>
           <Text style={styles.sub}>Vakansiyalarım</Text>
         </View>
         <Pressable onPress={signOut} style={styles.logoutBtn}>

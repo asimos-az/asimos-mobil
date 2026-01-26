@@ -30,7 +30,7 @@ export function SeekerJobsScreen() {
       <View style={styles.top}>
         <View>
           <Text style={styles.title}>Elanlar</Text>
-          <Text style={styles.sub}>İş axtaran (Alıcı)</Text>
+          <Text style={styles.sub}>İş axtaran</Text>
         </View>
         <Pressable onPress={signOut} style={styles.logoutBtn}>
           <Text style={styles.logoutText}>Çıxış</Text>

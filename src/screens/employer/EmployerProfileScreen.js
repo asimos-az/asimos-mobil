@@ -1,16 +1,48 @@
-import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React, { useState } from "react";
+import { Alert, StyleSheet, Text, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { Card } from "../../components/Card";
 import { Colors } from "../../theme/colors";
 import { useAuth } from "../../context/AuthContext";
 import { PrimaryButton } from "../../components/PrimaryButton";
+import { MapPicker } from "../../components/MapPicker";
 
 export function EmployerProfileScreen() {
-  const { user, signOut } = useAuth();
+  const navigation = useNavigation();
+  const { user, signOut, updateLocation } = useAuth();
+  const [locLoading, setLocLoading] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+
+  function goCreateJob() {
+    // Tab içindən Root Stack-dəki screen-ə keçmək üçün parent-ə yönləndir.
+    const parent = navigation.getParent?.();
+    if (parent) parent.navigate("EmployerCreateJob");
+    else navigation.navigate("EmployerCreateJob");
+  }
+
+  async function onPickedLocation(loc) {
+    if (locLoading) return;
+    setLocLoading(true);
+    try {
+      await updateLocation(loc);
+      Alert.alert("OK", "Lokasiya yeniləndi");
+    } catch (e) {
+      Alert.alert("Xəta", e.message || "Lokasiya yenilənmədi");
+    } finally {
+      setLocLoading(false);
+    }
+  }
 
   return (
     <SafeScreen>
+      <MapPicker
+        visible={mapOpen}
+        initial={user?.location || null}
+        onClose={() => setMapOpen(false)}
+        onPicked={onPickedLocation}
+      />
+
       <View style={styles.top}>
         <Text style={styles.title}>Profil</Text>
       </View>
@@ -24,6 +56,10 @@ export function EmployerProfileScreen() {
           {user?.location?.address ? <Text style={styles.item}>📍 {user.location.address}</Text> : null}
 
           <View style={{ height: 14 }} />
+          <PrimaryButton title="Vakansiya yarat" onPress={goCreateJob} />
+          <View style={{ height: 10 }} />
+          <PrimaryButton title="Lokasiyanı yenilə" loading={locLoading} onPress={() => setMapOpen(true)} />
+          <View style={{ height: 10 }} />
           <PrimaryButton variant="secondary" title="Çıxış" onPress={signOut} />
         </Card>
       </View>
