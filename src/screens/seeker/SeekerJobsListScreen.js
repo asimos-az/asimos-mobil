@@ -51,15 +51,21 @@ export function SeekerJobsListScreen() {
   useFocusEffect(
     React.useCallback(() => {
       api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => {});
+
+      // Poll so newly created jobs (by employer/admin) show up even if no manual refresh.
+      const t = setInterval(() => {
+        loadList();
+      }, 15000);
+      return () => clearInterval(t);
     }, [])
   );
 
   // Refresh unread count immediately when a push arrives
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener("asimos:pushReceived", () => {
-      // Update bell badge + refresh list so new jobs appear immediately without manual refresh
       api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => {});
-      try { loadList(); } catch {}
+      // Also refresh the list so new jobs appear without manual reload.
+      loadList();
     });
     return () => sub?.remove?.();
   }, []);
@@ -96,14 +102,15 @@ export function SeekerJobsListScreen() {
     });
   }, [items, minWage, maxWage, selectedCategories]);
 
-  async function loadList() {
+  async function loadList(locOverride) {
     try {
-      if (!location?.lat || !location?.lng) return;
+      const loc = locOverride || baseLocation || user?.location;
+      if (!loc?.lat || !loc?.lng) return;
       setLoading(true);
       const data = await api.listJobsWithSearch({
         q: q?.trim() || "",
-        lat: location.lat,
-        lng: location.lng,
+        lat: loc.lat,
+        lng: loc.lng,
         radius_m: radius,
         daily: undefined,
       });
@@ -121,9 +128,9 @@ export function SeekerJobsListScreen() {
 
   useEffect(() => {
     if (!location?.lat || !location?.lng) return;
-    if (didInit.current) return;
+    // First time + whenever user changes location (e.g. via Profile)
     didInit.current = true;
-    loadList();
+    loadList(location);
   }, [location?.lat, location?.lng]);
 
   const hasActiveFilters = !!(q?.trim() || minWage || maxWage || (selectedCategories?.length) || radius !== 1200);
@@ -180,7 +187,7 @@ export function SeekerJobsListScreen() {
         onPicked={async (loc) => {
           setBaseLocation(loc);
           didInit.current = true;
-          loadList();
+          await loadList(loc);
         }}
       />
 

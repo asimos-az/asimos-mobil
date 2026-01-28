@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
 import { Card } from "../../components/Card";
@@ -155,7 +155,51 @@ export function JobDetailScreen() {
           {job.category ? <Text style={styles.meta}>Kateqoriya: {job.category}</Text> : null}
           {job.wage ? <Text style={styles.meta}>Maaş: {job.wage}</Text> : null}
           {isTemporary && durationDays ? <Text style={styles.meta}>Müddət: {durationDays} gün</Text> : null}
-          {job.whatsapp ? <Text style={styles.meta}>WhatsApp: {job.whatsapp}</Text> : null}
+          {job.whatsapp ? (
+            <Pressable
+              onPress={() => {
+                const raw = String(job.whatsapp || "").replace(/\s+/g, "");
+                const digits = raw.replace(/[^+0-9]/g, "");
+                const num = digits.startsWith("+") ? digits.slice(1) : digits;
+                const url = `https://wa.me/${num}`;
+                Linking.openURL(url).catch(() => {});
+              }}
+              style={styles.contactRow}
+            >
+              <Ionicons name="logo-whatsapp" size={18} color={Colors.text} />
+              <Text style={styles.contactText}>{job.whatsapp}</Text>
+            </Pressable>
+          ) : null}
+
+          {job.phone ? (
+            <Pressable
+              onPress={() => {
+                const raw = String(job.phone || "").replace(/\s+/g, "");
+                Linking.openURL(`tel:${raw}`).catch(() => {});
+              }}
+              style={styles.contactRow}
+            >
+              <Ionicons name="call" size={18} color={Colors.text} />
+              <Text style={styles.contactText}>{job.phone}</Text>
+            </Pressable>
+          ) : null}
+
+          {job.link ? (
+            <Pressable
+              onPress={() => {
+                let url = String(job.link || "").trim();
+                if (!url) return;
+                if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+                Linking.openURL(url).catch(() => {});
+              }}
+              style={styles.contactRow}
+            >
+              <Ionicons name="link" size={18} color={Colors.text} />
+              <Text style={styles.contactText}>{job.link}</Text>
+            </Pressable>
+          ) : null}
+
+          {job.voen ? <Text style={styles.meta}>VOEN: {job.voen}</Text> : null}
           {jobLoc?.address ? <Text style={styles.meta}>📍 {jobLoc.address}</Text> : null}
 
           {typeof job.distanceM === "number" ? <Text style={styles.meta}>Sənə məsafə: {job.distanceM} m</Text> : null}
@@ -225,6 +269,20 @@ const styles = StyleSheet.create({
 
   jobTitle: { fontSize: 18, fontWeight: "900", color: Colors.text },
   meta: { marginTop: 8, color: Colors.muted, fontWeight: "800" },
+
+  contactRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.bg,
+  },
+  contactText: { color: Colors.text, fontWeight: '900' },
 
   actions: { marginTop: 10, flexDirection: "row", gap: 10 },
   actionBtn: {

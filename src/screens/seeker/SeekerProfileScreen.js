@@ -40,26 +40,19 @@ export function SeekerProfileScreen() {
     (async () => {
       const ENABLED_KEY = "ASIMOS_NOTIF_ENABLED_V1";
       const TOKEN_KEY = "ASIMOS_EXPO_PUSH_TOKEN_V1";
-      const USER_DISABLED_KEY = "ASIMOS_NOTIF_USER_DISABLED_V1";
 
-      const userDisabled = await AsyncStorage.getItem(USER_DISABLED_KEY).catch(() => null);
-      if (userDisabled === "1") {
+      const enabled = await AsyncStorage.getItem(ENABLED_KEY).catch(() => null);
+      if (enabled === "0") {
         if (alive) setNotifEnabled(false);
-        await AsyncStorage.setItem(ENABLED_KEY, "0").catch(() => {});
         return;
       }
 
       const perm = await Notifications.getPermissionsAsync().catch(() => ({ status: "undetermined" }));
       if (perm?.status === "granted") {
-        // OS permission is the source of truth for the switch (unless user manually disabled).
-        if (alive) setNotifEnabled(true);
-        await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => {});
-        await AsyncStorage.setItem(USER_DISABLED_KEY, "0").catch(() => {});
-
-        // Best-effort: ensure we have a valid Expo push token stored on backend.
         const token = await registerForPushNotificationsAsync();
         if (!alive) return;
         if (token) {
+          await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => {});
           const prev = await AsyncStorage.getItem(TOKEN_KEY).catch(() => null);
           if (prev !== token) {
             try {
@@ -69,14 +62,13 @@ export function SeekerProfileScreen() {
             }
             await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => {});
           }
+          setNotifEnabled(true);
+          return;
         }
-        return;
       }
 
-      // Permission not granted
-      await AsyncStorage.setItem(ENABLED_KEY, "0").catch(() => {});
       if (alive) setNotifEnabled(false);
-})();
+    })();
 
     return () => {
       alive = false;
@@ -135,7 +127,6 @@ export function SeekerProfileScreen() {
     setNotifLoading(true);
     try {
       if (next) {
-        await AsyncStorage.setItem("ASIMOS_NOTIF_USER_DISABLED_V1", "0").catch(() => {});
         const token = await registerForPushNotificationsAsync();
         if (!token) {
           Alert.alert("İcazə lazımdır", "Bildirişləri aktiv etmək üçün telefonda icazə ver.");
@@ -150,7 +141,6 @@ export function SeekerProfileScreen() {
       } else {
         await api.clearPushToken().catch(() => {});
         setNotifEnabled(false);
-        await AsyncStorage.setItem("ASIMOS_NOTIF_USER_DISABLED_V1", "1").catch(() => {});
         await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V1", "0");
         Alert.alert("OK", "Bildirişlər söndürüldü");
       }

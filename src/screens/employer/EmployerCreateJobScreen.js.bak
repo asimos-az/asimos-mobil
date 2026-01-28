@@ -22,10 +22,7 @@ export function EmployerCreateJobScreen({ navigation }) {
   const [title, setTitle] = useState("");
   const [wage, setWage] = useState("");
   const [category, setCategory] = useState("");
-  const [whatsapp, setWhatsapp] = useState("+994");
-  const [phone, setPhone] = useState("+994");
-  const [link, setLink] = useState("");
-  const [voen, setVoen] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
   const [description, setDescription] = useState("");
 
   // Job type (required)
@@ -128,9 +125,6 @@ export function EmployerCreateJobScreen({ navigation }) {
         wage,
         category,
         whatsapp,
-        phone,
-        link,
-        voen,
         description,
 
         // Backward compatibility (older server fields)
@@ -261,30 +255,6 @@ export function EmployerCreateJobScreen({ navigation }) {
             onChangeText={setWhatsapp}
             placeholder="+994..."
             keyboardType="phone-pad"
-          />
-
-          <Input
-            label="Əlaqə nömrəsi"
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="+994..."
-            keyboardType="phone-pad"
-          />
-
-          <Input
-            label="Link (Instagram / website)"
-            value={link}
-            onChangeText={setLink}
-            placeholder="https://..."
-            autoCapitalize="none"
-          />
-
-          <Input
-            label="VOEN"
-            value={voen}
-            onChangeText={setVoen}
-            placeholder="Məs: 123456789"
-            keyboardType="numeric"
           />
 
           <Input

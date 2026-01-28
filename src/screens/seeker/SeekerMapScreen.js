@@ -49,7 +49,6 @@ export function SeekerMapScreen() {
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener("asimos:pushReceived", () => {
       api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => {});
-      try { load(); } catch {}
     });
     return () => sub?.remove?.();
   }, []);

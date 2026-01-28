@@ -35,41 +35,35 @@ export function EmployerProfileScreen() {
     (async () => {
       const ENABLED_KEY = "ASIMOS_NOTIF_ENABLED_V1";
       const TOKEN_KEY = "ASIMOS_EXPO_PUSH_TOKEN_V1";
-      const USER_DISABLED_KEY = "ASIMOS_NOTIF_USER_DISABLED_V1";
 
-      // If user manually disabled in-app, keep OFF.
-      const userDisabled = await AsyncStorage.getItem(USER_DISABLED_KEY).catch(() => null);
-      if (userDisabled === "1") {
+      // If user manually disabled, keep OFF.
+      const enabled = await AsyncStorage.getItem(ENABLED_KEY).catch(() => null);
+      if (enabled === "0") {
         if (alive) setNotifEnabled(false);
-        await AsyncStorage.setItem(ENABLED_KEY, "0").catch(() => {});
         return;
       }
 
       // Sync with real OS permission state.
       const perm = await Notifications.getPermissionsAsync().catch(() => ({ status: "undetermined" }));
       if (perm?.status === "granted") {
-        // OS permission is the source of truth for the switch (unless user manually disabled).
-        if (alive) setNotifEnabled(true);
-        await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => {});
-        await AsyncStorage.setItem(USER_DISABLED_KEY, "0").catch(() => {});
-
-        // Best-effort: ensure we have a valid Expo push token stored on backend.
+        // Make sure we have token stored + on server
         const token = await registerForPushNotificationsAsync();
         if (!alive) return;
         if (token) {
+          await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => {});
           const prev = await AsyncStorage.getItem(TOKEN_KEY).catch(() => null);
           if (prev !== token) {
             try { await api.setPushToken(token); } catch {}
             await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => {});
           }
+          setNotifEnabled(true);
+          return;
         }
-        return;
       }
 
-      // Not granted -> show OFF
-      await AsyncStorage.setItem(ENABLED_KEY, "0").catch(() => {});
+      // Not granted or token unavailable -> show OFF
       if (alive) setNotifEnabled(false);
-})();
+    })();
 
     return () => {
       alive = false;
@@ -133,7 +127,6 @@ export function EmployerProfileScreen() {
     setNotifLoading(true);
     try {
       if (next) {
-        await AsyncStorage.setItem("ASIMOS_NOTIF_USER_DISABLED_V1", "0").catch(() => {});
         const token = await registerForPushNotificationsAsync();
         if (!token) {
           Alert.alert("İcazə lazımdır", "Bildirişləri aktiv etmək üçün telefonda icazə ver.");
@@ -148,7 +141,6 @@ export function EmployerProfileScreen() {
       } else {
         await api.clearPushToken().catch(() => {});
         setNotifEnabled(false);
-        await AsyncStorage.setItem("ASIMOS_NOTIF_USER_DISABLED_V1", "1").catch(() => {});
         await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V1", "0");
         Alert.alert("OK", "Bildirişlər söndürüldü");
       }

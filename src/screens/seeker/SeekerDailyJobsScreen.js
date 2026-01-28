@@ -53,6 +53,11 @@ export function SeekerDailyJobsScreen() {
       api.getUnreadNotificationsCount()
         .then((r) => setUnread(r?.unread || 0))
         .catch(() => {});
+
+      const t = setInterval(() => {
+        loadList();
+      }, 15000);
+      return () => clearInterval(t);
     }, [])
   );
 
@@ -60,7 +65,7 @@ export function SeekerDailyJobsScreen() {
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener("asimos:pushReceived", () => {
       api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => {});
-      try { loadList(); } catch {}
+      loadList();
     });
     return () => sub?.remove?.();
   }, []);
@@ -97,14 +102,15 @@ export function SeekerDailyJobsScreen() {
     });
   }, [items, minWage, maxWage, selectedCategories]);
 
-  async function loadList() {
+  async function loadList(locOverride) {
     try {
-      if (!location?.lat || !location?.lng) return;
+      const loc = locOverride || baseLocation || user?.location;
+      if (!loc?.lat || !loc?.lng) return;
       setLoading(true);
       const data = await api.listJobsWithSearch({
         q: q?.trim() || "",
-        lat: location.lat,
-        lng: location.lng,
+        lat: loc.lat,
+        lng: loc.lng,
         radius_m: radius,
         daily: true,
       });
@@ -122,9 +128,8 @@ export function SeekerDailyJobsScreen() {
 
   useEffect(() => {
     if (!location?.lat || !location?.lng) return;
-    if (didInit.current) return;
     didInit.current = true;
-    loadList();
+    loadList(location);
   }, [location?.lat, location?.lng]);
 
   const hasActiveFilters = !!(q?.trim() || minWage || maxWage || (selectedCategories?.length) || radius !== 1200);
@@ -181,7 +186,7 @@ export function SeekerDailyJobsScreen() {
         onPicked={async (loc) => {
           setBaseLocation(loc);
           didInit.current = true;
-          loadList();
+          await loadList(loc);
         }}
       />
 

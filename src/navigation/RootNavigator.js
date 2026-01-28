@@ -48,15 +48,13 @@ export function RootNavigator() {
       const ASKED_KEY = "ASIMOS_NOTIF_ASKED_V1";
       const ENABLED_KEY = "ASIMOS_NOTIF_ENABLED_V1";
       const TOKEN_KEY = "ASIMOS_EXPO_PUSH_TOKEN_V1";
-      const USER_DISABLED_KEY = "ASIMOS_NOTIF_USER_DISABLED_V1";
 
       const asked = await AsyncStorage.getItem(ASKED_KEY).catch(() => null);
-      const userDisabled = await AsyncStorage.getItem(USER_DISABLED_KEY).catch(() => null);
+      const enabled = await AsyncStorage.getItem(ENABLED_KEY).catch(() => null);
 
-      // If user manually disabled notifications in-app, respect it.
-      if (userDisabled === "1") {
+      // If user manually disabled notifications, do nothing.
+      if (enabled === "0") {
         await AsyncStorage.setItem(ASKED_KEY, "1").catch(() => {});
-        await AsyncStorage.setItem(ENABLED_KEY, "0").catch(() => {});
         return;
       }
 
@@ -64,15 +62,11 @@ export function RootNavigator() {
       // make sure our in-app switch is ON and token is synced.
       const perm = await Notifications.getPermissionsAsync().catch(() => ({ status: "undetermined" }));
       if (perm?.status === "granted") {
-        // OS permission granted => our in-app switch should be ON (unless user manually disabled).
-        await AsyncStorage.setItem(ASKED_KEY, "1").catch(() => {});
-        await AsyncStorage.setItem(USER_DISABLED_KEY, "0").catch(() => {});
-        await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => {});
-
-        // Best-effort: ensure token is synced to backend.
         const token = await registerForPushNotificationsAsync();
         if (!mounted) return;
+        await AsyncStorage.setItem(ASKED_KEY, "1").catch(() => {});
         if (token) {
+          await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => {});
           const prev = await AsyncStorage.getItem(TOKEN_KEY).catch(() => null);
           if (prev !== token) {
             try { await api.setPushToken(token); } catch {}
@@ -88,7 +82,6 @@ export function RootNavigator() {
         if (!mounted) return;
         await AsyncStorage.setItem(ASKED_KEY, "1").catch(() => {});
         if (token) {
-          await AsyncStorage.setItem(USER_DISABLED_KEY, "0").catch(() => {});
           await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => {});
           await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => {});
           try { await api.setPushToken(token); } catch {}
