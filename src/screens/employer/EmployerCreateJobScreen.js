@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -30,18 +30,47 @@ export function EmployerCreateJobScreen({ navigation }) {
   const [durationPreset, setDurationPreset] = useState("1"); // "1" | "3" | "10" | "other"
   const [durationOther, setDurationOther] = useState("");
 
-  const categoryOptions = [
-    "Restoran",
-    "Kafe",
-    "Market",
-    "Kuryer",
-    "Taksi",
-    "Ofis",
-    "Tikinti",
-    "Təhlükəsizlik",
-    "Gözəllik",
-    "Parkofka",
-  ];
+  // Categories are managed from Admin panel (Supabase) and loaded from backend.
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [categoryOptions, setCategoryOptions] = useState([]); // string[] (names, flattened)
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setCategoriesLoading(true);
+        const res = await api.listCategories();
+        const items = Array.isArray(res?.items) ? res.items : [];
+
+        // Flatten parent -> children, keep names (backend currently stores category as string)
+        const out = [];
+        for (const p of items) {
+          if (p?.name) out.push(String(p.name));
+          const children = Array.isArray(p?.children) ? p.children : [];
+          for (const c of children) {
+            if (c?.name) out.push(`↳ ${String(c.name)}`);
+          }
+        }
+
+        if (alive) {
+          setCategoryOptions(out);
+          // If current selected category no longer exists, reset
+          if (category && !out.includes(category) && !out.includes(`↳ ${category}`)) {
+            setCategory("");
+          }
+        }
+      } catch (e) {
+        // Don't hard fail; user can still type category manually if needed.
+        if (alive) setCategoryOptions([]);
+      } finally {
+        if (alive) setCategoriesLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [location, setLocation] = useState(user.location || null);
   const [notifyRadiusM, setNotifyRadiusM] = useState("500");
@@ -124,6 +153,7 @@ export function EmployerCreateJobScreen({ navigation }) {
       <MapPicker
         visible={mapOpen}
         initial={location}
+        userLocation={user?.location || null}
         onClose={() => setMapOpen(false)}
         onPicked={(loc) => setLocation(loc)}
       />
@@ -145,7 +175,13 @@ export function EmployerCreateJobScreen({ navigation }) {
         <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        contentInsetAdjustmentBehavior="always"
+        showsVerticalScrollIndicator={false}
+      >
         <Card>
           <Input
             label="Elanın adı"
@@ -203,9 +239,14 @@ export function EmployerCreateJobScreen({ navigation }) {
           <SelectField
             label="Kateqoriya"
             value={category}
-            onChange={(v) => setCategory(String(v || ""))}
+            onChange={(v) => {
+              const raw = String(v || "");
+              // Remove the visual prefix when saving
+              setCategory(raw.startsWith("↳ ") ? raw.slice(2) : raw);
+            }}
             placeholder="Kateqoriya seç"
             options={categoryOptions}
+            loading={categoriesLoading}
           />
 
           <Input
@@ -278,7 +319,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   title: { fontSize: 18, fontWeight: "900", color: Colors.text, flex: 1, textAlign: "center" },
-  scroll: { padding: 16, paddingBottom: 24 },
+  // Extra bottom padding so last inputs + button stay visible when keyboard is open
+  scroll: { padding: 16, paddingBottom: 160 },
   label: { color: Colors.muted, marginBottom: 6, fontWeight: "900" },
   help: { marginTop: 8, color: Colors.muted, fontSize: 12, fontWeight: "700" },
 });

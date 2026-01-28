@@ -1,34 +1,121 @@
-import React, { useEffect, useState } from "react";
-import { Alert, Linking, StyleSheet, Switch, Text, View } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { Alert, Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
+import { Ionicons } from "@expo/vector-icons";
+
 import { SafeScreen } from "../../components/SafeScreen";
 import { Card } from "../../components/Card";
 import { Colors } from "../../theme/colors";
 import { useAuth } from "../../context/AuthContext";
-import { PrimaryButton } from "../../components/PrimaryButton";
 import { MapPicker } from "../../components/MapPicker";
+import { PrimaryButton } from "../../components/PrimaryButton";
 import { registerForPushNotificationsAsync } from "../../utils/pushNotifications";
 import { api } from "../../api/client";
 
 export function SeekerProfileScreen() {
+  const navigation = useNavigation();
   const { user, signOut, updateLocation } = useAuth();
+
   const [locLoading, setLocLoading] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
 
   const [notifEnabled, setNotifEnabled] = useState(false);
-  const [notifBusy, setNotifBusy] = useState(false);
+  const [notifLoading, setNotifLoading] = useState(false);
 
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [stats, setStats] = useState({ totalNotifs: 0, unread: 0, hasLoc: 0 });
+
+  const initials = useMemo(() => {
+    const name = (user?.fullName || "").trim();
+    if (!name) return "A";
+    const parts = name.split(/\s+/).slice(0, 2);
+    return parts.map((p) => p[0]?.toUpperCase()).join("") || "A";
+  }, [user?.fullName]);
+
+  // Sync notification switch with OS permission + token state
   useEffect(() => {
-    let mounted = true;
+    let alive = true;
     (async () => {
-      const v = await AsyncStorage.getItem("ASIMOS_NOTIF_ENABLED_V1").catch(() => null);
-      if (!mounted) return;
-      setNotifEnabled(v === "1");
-    })();
+      const ENABLED_KEY = "ASIMOS_NOTIF_ENABLED_V1";
+      const TOKEN_KEY = "ASIMOS_EXPO_PUSH_TOKEN_V1";
+      const USER_DISABLED_KEY = "ASIMOS_NOTIF_USER_DISABLED_V1";
+
+      const userDisabled = await AsyncStorage.getItem(USER_DISABLED_KEY).catch(() => null);
+      if (userDisabled === "1") {
+        if (alive) setNotifEnabled(false);
+        await AsyncStorage.setItem(ENABLED_KEY, "0").catch(() => {});
+        return;
+      }
+
+      const perm = await Notifications.getPermissionsAsync().catch(() => ({ status: "undetermined" }));
+      if (perm?.status === "granted") {
+        // OS permission is the source of truth for the switch (unless user manually disabled).
+        if (alive) setNotifEnabled(true);
+        await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => {});
+        await AsyncStorage.setItem(USER_DISABLED_KEY, "0").catch(() => {});
+
+        // Best-effort: ensure we have a valid Expo push token stored on backend.
+        const token = await registerForPushNotificationsAsync();
+        if (!alive) return;
+        if (token) {
+          const prev = await AsyncStorage.getItem(TOKEN_KEY).catch(() => null);
+          if (prev !== token) {
+            try {
+              await api.setPushToken(token);
+            } catch {
+              // ignore
+            }
+            await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => {});
+          }
+        }
+        return;
+      }
+
+      // Permission not granted
+      await AsyncStorage.setItem(ENABLED_KEY, "0").catch(() => {});
+      if (alive) setNotifEnabled(false);
+})();
+
     return () => {
-      mounted = false;
+      alive = false;
     };
   }, []);
+
+  // Lightweight stats for seeker (notifications + location)
+  useEffect(() => {
+    let alive = true;
+
+    async function loadStats() {
+      setStatsLoading(true);
+      try {
+        const unreadRes = await api.getUnreadNotificationsCount().catch(() => ({ unread: 0 }));
+        const listRes = await api.listMyNotifications({ limit: 200, offset: 0 }).catch(() => []);
+        const items = Array.isArray(listRes?.items) ? listRes.items : Array.isArray(listRes) ? listRes : [];
+        const hasLoc = user?.location?.lat && user?.location?.lng ? 1 : 0;
+
+        if (alive) {
+          setStats({
+            totalNotifs: items.length,
+            unread: Number(unreadRes?.unread || 0),
+            hasLoc,
+          });
+        }
+      } catch {
+        if (alive) setStats({ totalNotifs: 0, unread: 0, hasLoc: user?.location?.lat && user?.location?.lng ? 1 : 0 });
+      } finally {
+        if (alive) setStatsLoading(false);
+      }
+    }
+
+    loadStats();
+    const unsub = navigation.addListener?.("focus", loadStats);
+    return () => {
+      alive = false;
+      if (typeof unsub === "function") unsub();
+    };
+  }, [navigation, user?.location?.lat, user?.location?.lng]);
 
   async function onPickedLocation(loc) {
     if (locLoading) return;
@@ -44,48 +131,33 @@ export function SeekerProfileScreen() {
   }
 
   async function toggleNotifications(next) {
-    if (notifBusy) return;
-    setNotifBusy(true);
-
+    if (notifLoading) return;
+    setNotifLoading(true);
     try {
       if (next) {
+        await AsyncStorage.setItem("ASIMOS_NOTIF_USER_DISABLED_V1", "0").catch(() => {});
         const token = await registerForPushNotificationsAsync();
         if (!token) {
-          Alert.alert(
-            "Bildirişlər",
-            "Bildiriş icazəsi verilmədi. Telefonun Settings bölməsindən bildirişləri aktiv et.",
-            [
-              { text: "Bağla", style: "cancel" },
-              { text: "Settings aç", onPress: () => Linking.openSettings?.() },
-            ]
-          );
-          await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V1", "0").catch(() => {});
+          Alert.alert("İcazə lazımdır", "Bildirişləri aktiv etmək üçün telefonda icazə ver.");
           setNotifEnabled(false);
+          await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V1", "0");
           return;
         }
-
         await api.setPushToken(token);
-        await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V1", "1").catch(() => {});
-        await AsyncStorage.setItem("ASIMOS_EXPO_PUSH_TOKEN_V1", token).catch(() => {});
         setNotifEnabled(true);
+        await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V1", "1");
         Alert.alert("OK", "Bildirişlər aktiv edildi");
-        return;
+      } else {
+        await api.clearPushToken().catch(() => {});
+        setNotifEnabled(false);
+        await AsyncStorage.setItem("ASIMOS_NOTIF_USER_DISABLED_V1", "1").catch(() => {});
+        await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V1", "0");
+        Alert.alert("OK", "Bildirişlər söndürüldü");
       }
-
-      // disable
-      try {
-        await api.clearPushToken();
-      } catch {
-        // ignore
-      }
-      await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V1", "0").catch(() => {});
-      await AsyncStorage.removeItem("ASIMOS_EXPO_PUSH_TOKEN_V1").catch(() => {});
-      setNotifEnabled(false);
-      Alert.alert("OK", "Bildirişlər söndürüldü");
     } catch (e) {
-      Alert.alert("Xəta", e.message || "Bildiriş ayarı dəyişmədi");
+      Alert.alert("Xəta", e.message || "Dəyişiklik alınmadı");
     } finally {
-      setNotifBusy(false);
+      setNotifLoading(false);
     }
   }
 
@@ -94,64 +166,228 @@ export function SeekerProfileScreen() {
       <MapPicker
         visible={mapOpen}
         initial={user?.location || null}
+        userLocation={user?.location || null}
         onClose={() => setMapOpen(false)}
         onPicked={onPickedLocation}
       />
 
-      <View style={styles.top}>
-        <Text style={styles.title}>Profil</Text>
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.hName} numberOfLines={1}>
+              {user?.fullName || "—"}
+            </Text>
+            <Text style={styles.hSub} numberOfLines={1}>
+              İş axtaran
+            </Text>
+          </View>
+          <View style={styles.headerIcon}>
+            <Ionicons name="person-outline" size={20} color={Colors.primary} />
+          </View>
+        </View>
       </View>
 
       <View style={styles.body}>
         <Card>
-          <Text style={styles.name}>{user?.fullName || "—"}</Text>
-          <Text style={styles.item}>Email: {user?.email || "—"}</Text>
-          <Text style={styles.item}>Telefon: {user?.phone || "—"}</Text>
-          {user?.location?.address ? <Text style={styles.item}>📍 {user.location.address}</Text> : null}
+          <View style={styles.infoRow}>
+            <Ionicons name="mail-outline" size={18} color={Colors.muted} />
+            <Text style={styles.infoText}>{user?.email || "—"}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Ionicons name="call-outline" size={18} color={Colors.muted} />
+            <Text style={styles.infoText}>{user?.phone || "—"}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Ionicons name="location-outline" size={18} color={Colors.muted} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.infoText} numberOfLines={2}>
+                {user?.location?.address || "Lokasiya seçilməyib"}
+              </Text>
+              {!!user?.location?.lat && !!user?.location?.lng && (
+                <Text style={styles.locSub} numberOfLines={1}>
+                  {Number(user.location.lat).toFixed(5)}, {Number(user.location.lng).toFixed(5)}
+                </Text>
+              )}
+            </View>
+            <Pressable
+              onPress={() => setMapOpen(true)}
+              style={({ pressed }) => [styles.locPill, pressed && { opacity: 0.85 }]}
+            >
+              <Ionicons name="map-outline" size={16} color={Colors.primary} />
+              <Text style={styles.locPillText}>Xəritə</Text>
+            </Pressable>
+          </View>
 
           <View style={styles.divider} />
 
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowTitle}>Bildirişlər</Text>
-              <Text style={styles.rowSub}>
-                Yaxınlıqda yeni vakansiya çıxanda push bildiriş gəlsin.
-              </Text>
+          <View style={styles.statsHeader}>
+            <Text style={styles.statsTitle}>Statistika</Text>
+            {statsLoading ? <Text style={styles.statsHint}>Yüklənir…</Text> : <Text style={styles.statsHint}>Bu hesab üzrə</Text>}
+          </View>
+
+          <View style={styles.statsGrid}>
+            <View style={[styles.statBox, styles.statBoxPrimary]}>
+              <Ionicons name="notifications-outline" size={18} color={Colors.primary} />
+              <Text style={styles.statValue}>{stats.totalNotifs}</Text>
+              <Text style={styles.statLabel}>Bildirişlər</Text>
             </View>
-            <Switch
-              value={notifEnabled}
-              onValueChange={(v) => toggleNotifications(v)}
-              disabled={notifBusy}
-              trackColor={{ false: Colors.border, true: Colors.primary }}
-              thumbColor={notifEnabled ? "#fff" : "#fff"}
-            />
+
+            <View style={[styles.statBox, styles.statBoxSuccess]}>
+              <Ionicons name="mail-unread-outline" size={18} color={Colors.success} />
+              <Text style={styles.statValue}>{stats.unread}</Text>
+              <Text style={styles.statLabel}>Oxunmamış</Text>
+            </View>
+
+            <View style={[styles.statBox, styles.statBoxMuted]}>
+              <Ionicons name="location-outline" size={18} color={Colors.muted} />
+              <Text style={styles.statValue}>{stats.hasLoc ? "✓" : "—"}</Text>
+              <Text style={styles.statLabel}>Lokasiya</Text>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleLeft}>
+              <View style={styles.toggleIcon}>
+                <Ionicons name={notifEnabled ? "notifications-outline" : "notifications-off-outline"} size={18} color={Colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.toggleTitle}>Bildirişlər</Text>
+                <Text style={styles.toggleSub}>Yeni vakansiyalar və yeniliklər</Text>
+              </View>
+            </View>
+
+            <Switch value={notifEnabled} onValueChange={toggleNotifications} disabled={notifLoading} />
           </View>
 
           <View style={{ height: 14 }} />
+
           <PrimaryButton title="Lokasiyanı yenilə" loading={locLoading} onPress={() => setMapOpen(true)} />
           <View style={{ height: 10 }} />
           <PrimaryButton variant="secondary" title="Çıxış" onPress={signOut} />
         </Card>
+
+        <View style={{ height: 18 }} />
+
+        <Pressable
+          onPress={() => navigation.navigate("SeekerNotifications")}
+          style={({ pressed }) => [styles.quickBtn, pressed && { opacity: 0.9 }]}
+        >
+          <Ionicons name="notifications-outline" size={18} color={Colors.primary} />
+          <Text style={styles.quickBtnText}>Bildirişlərə bax</Text>
+          <Ionicons name="chevron-forward" size={18} color={Colors.muted} />
+        </Pressable>
       </View>
     </SafeScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  top: {
+  header: {
     paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 12,
+    paddingTop: 16,
+    paddingBottom: 10,
     backgroundColor: Colors.card,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  title: { fontSize: 18, fontWeight: "900", color: Colors.text },
+  headerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: { fontWeight: "900", color: Colors.primary, fontSize: 18 },
+  hName: { fontSize: 18, fontWeight: "900", color: Colors.text },
+  hSub: { marginTop: 2, color: Colors.muted, fontWeight: "800" },
+  headerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   body: { flex: 1, padding: 16 },
-  name: { fontSize: 18, fontWeight: "900", color: Colors.text, marginBottom: 10 },
-  item: { color: Colors.muted, fontWeight: "800", marginBottom: 6 },
+
+  infoRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
+  infoText: { color: Colors.text, fontWeight: "800", flex: 1 },
+  locSub: { marginTop: 2, color: Colors.muted, fontSize: 12, fontWeight: "700" },
+  locPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+  },
+  locPillText: { fontWeight: "900", color: Colors.primary },
+
   divider: { height: 1, backgroundColor: Colors.border, marginVertical: 14 },
-  row: { flexDirection: "row", alignItems: "center", gap: 12 },
-  rowTitle: { fontWeight: "900", color: Colors.text },
-  rowSub: { marginTop: 4, color: Colors.muted, fontWeight: "700", fontSize: 12 },
+
+  statsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  statsTitle: { fontSize: 14, fontWeight: "900", color: Colors.text },
+  statsHint: { color: Colors.muted, fontWeight: "800" },
+
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 10 },
+  statBox: {
+    flexGrow: 1,
+    flexBasis: "30%",
+    minWidth: 100,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 12,
+    gap: 6,
+  },
+  statBoxPrimary: { backgroundColor: Colors.primarySoft },
+  statBoxSuccess: { backgroundColor: "#E9FBEF" },
+  statBoxMuted: { backgroundColor: "#F7F8FA" },
+  statValue: { fontSize: 18, fontWeight: "900", color: Colors.text },
+  statLabel: { color: Colors.muted, fontWeight: "800" },
+
+  toggleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  toggleLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  toggleIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toggleTitle: { fontWeight: "900", color: Colors.text },
+  toggleSub: { marginTop: 2, color: Colors.muted, fontWeight: "700", fontSize: 12 },
+
+  quickBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+  },
+  quickBtnText: { flex: 1, fontWeight: "900", color: Colors.text },
 });

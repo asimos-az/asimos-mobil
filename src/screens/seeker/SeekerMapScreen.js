@@ -1,14 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View, DeviceEventEmitter } from "react-native";
 import { WebView } from "react-native-webview";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 
 import { SafeScreen } from "../../components/SafeScreen";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { Colors } from "../../theme/colors";
 import { api } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
+import { NotificationBell } from "../../components/NotificationBell";
 
 const RADIUS_PRESETS = [
   { label: "500m", value: 500 },
@@ -26,6 +27,8 @@ export function SeekerMapScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
 
+  const [unread, setUnread] = useState(0);
+
   const [radius, setRadius] = useState(1200);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -33,6 +36,23 @@ export function SeekerMapScreen() {
   const didInit = useRef(false);
 
   const userLoc = user?.location || null;
+
+  useFocusEffect(
+    React.useCallback(() => {
+      api.getUnreadNotificationsCount()
+        .then((r) => setUnread(r?.unread || 0))
+        .catch(() => {});
+    }, [])
+  );
+
+  // Refresh unread count immediately when a push arrives
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener("asimos:pushReceived", () => {
+      api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => {});
+      try { load(); } catch {}
+    });
+    return () => sub?.remove?.();
+  }, []);
 
   async function load() {
     try {
@@ -168,6 +188,8 @@ export function SeekerMapScreen() {
         </View>
 
         <View style={styles.actions}>
+          <NotificationBell count={unread} onPress={() => navigation.navigate("SeekerNotifications")} />
+
           <Pressable onPress={load} style={styles.iconBtn}>
             <Ionicons name={loading ? "time-outline" : "refresh"} size={22} color={Colors.muted} />
           </Pressable>

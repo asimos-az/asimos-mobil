@@ -33,6 +33,7 @@ export function LocationGateScreen() {
       <MapPicker
         visible={mapOpen}
         initial={loc}
+        userLocation={user?.location || null}
         onClose={() => setMapOpen(false)}
         onPicked={(picked) => setLoc(picked)}
       />

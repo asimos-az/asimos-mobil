@@ -1,5 +1,6 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
+import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 // Show alerts while app is foregrounded (demo-friendly)
@@ -36,7 +37,15 @@ export async function registerForPushNotificationsAsync() {
       return null;
     }
 
-    const token = await Notifications.getExpoPushTokenAsync();
+    // On modern Expo SDKs (EAS builds), projectId is required to generate a valid push token.
+    const projectId =
+      Constants?.expoConfig?.extra?.eas?.projectId ||
+      Constants?.easConfig?.projectId ||
+      undefined;
+
+    const token = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : undefined
+    );
     return token?.data || null;
   } catch {
     return null;

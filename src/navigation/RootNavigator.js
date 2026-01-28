@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
 import { useAuth } from "../context/AuthContext";
 import { AuthEntryScreen } from "../screens/auth/AuthEntryScreen";
 import { VerifyOtpScreen } from "../screens/auth/VerifyOtpScreen";
@@ -12,44 +13,89 @@ import { EmployerNotificationsScreen } from "../screens/employer/EmployerNotific
 import { EmployerMapScreen } from "../screens/employer/EmployerMapScreen";
 import { JobDetailScreen } from "../screens/shared/JobDetailScreen";
 import { LaunchSplashScreen } from "../screens/shared/LaunchSplashScreen";
-import { getDeviceLocationOrNull } from "../utils/deviceLocation";
 import { registerForPushNotificationsAsync } from "../utils/pushNotifications";
 import { api } from "../api/client";
-import * as Notifications from "expo-notifications";
+import { LocationAutoScreen } from "../screens/shared/LocationAutoScreen";
+import { DeviceEventEmitter } from "react-native";
+import { SeekerNotificationsScreen } from "../screens/seeker/SeekerNotificationsScreen";
 import { navigationRef } from "./navigationRef";
 
 const Stack = createNativeStackNavigator();
 
 export function RootNavigator() {
-  const { booting, user, updateLocation } = useAuth();
+  const { booting, user } = useAuth();
   const [showSplash, setShowSplash] = React.useState(true);
 
   const isAuthed = !!user;
   const role = user?.role;
 
-  // Seeker login olandan sonra (bir dəfə) telefonun default location permission pəncərəsini çıxart.
-  // UI-ni bloklamır, user rədd etsə də tətbiq işləməyə davam edir.
+  const needsSeekerLocation =
+    isAuthed && role === "seeker" &&
+    !(user?.location && typeof user.location.lat === "number" && typeof user.location.lng === "number");
+
+  // NOTE: Location permission and auto-detect flow is handled via LocationAutoScreen
+  // (shown for seekers until location is saved).
+
+  // Push notifications
+  // 1) First login -> show OS permission prompt once and sync switch state.
+  // 2) Later -> only refresh token when notifications are enabled.
   useEffect(() => {
     let mounted = true;
 
     (async () => {
       if (!isAuthed || !user?.id) return;
-      if (role !== "seeker") return;
 
-      const hasLoc =
-        user?.location && typeof user.location.lat === "number" && typeof user.location.lng === "number";
-      if (hasLoc) return;
+      const ASKED_KEY = "ASIMOS_NOTIF_ASKED_V1";
+      const ENABLED_KEY = "ASIMOS_NOTIF_ENABLED_V1";
+      const TOKEN_KEY = "ASIMOS_EXPO_PUSH_TOKEN_V1";
+      const USER_DISABLED_KEY = "ASIMOS_NOTIF_USER_DISABLED_V1";
 
-      const ASK_KEY = "ASIMOS_LOC_ASKED_V1";
-      const asked = await AsyncStorage.getItem(ASK_KEY).catch(() => null);
-      if (asked) return;
+      const asked = await AsyncStorage.getItem(ASKED_KEY).catch(() => null);
+      const userDisabled = await AsyncStorage.getItem(USER_DISABLED_KEY).catch(() => null);
 
-      await AsyncStorage.setItem(ASK_KEY, "1").catch(() => {});
+      // If user manually disabled notifications in-app, respect it.
+      if (userDisabled === "1") {
+        await AsyncStorage.setItem(ASKED_KEY, "1").catch(() => {});
+        await AsyncStorage.setItem(ENABLED_KEY, "0").catch(() => {});
+        return;
+      }
 
-      const loc = await getDeviceLocationOrNull({ timeoutMs: 12000 });
-      if (!mounted) return;
-      if (loc) {
-        try { await updateLocation(loc); } catch {}
+      // If OS permission already granted (e.g., user enabled in Settings),
+      // make sure our in-app switch is ON and token is synced.
+      const perm = await Notifications.getPermissionsAsync().catch(() => ({ status: "undetermined" }));
+      if (perm?.status === "granted") {
+        // OS permission granted => our in-app switch should be ON (unless user manually disabled).
+        await AsyncStorage.setItem(ASKED_KEY, "1").catch(() => {});
+        await AsyncStorage.setItem(USER_DISABLED_KEY, "0").catch(() => {});
+        await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => {});
+
+        // Best-effort: ensure token is synced to backend.
+        const token = await registerForPushNotificationsAsync();
+        if (!mounted) return;
+        if (token) {
+          const prev = await AsyncStorage.getItem(TOKEN_KEY).catch(() => null);
+          if (prev !== token) {
+            try { await api.setPushToken(token); } catch {}
+            await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => {});
+          }
+        }
+        return;
+      }
+
+      // Permission not granted. Only prompt once on first login.
+      if (asked !== "1") {
+        const token = await registerForPushNotificationsAsync();
+        if (!mounted) return;
+        await AsyncStorage.setItem(ASKED_KEY, "1").catch(() => {});
+        if (token) {
+          await AsyncStorage.setItem(USER_DISABLED_KEY, "0").catch(() => {});
+          await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => {});
+          await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => {});
+          try { await api.setPushToken(token); } catch {}
+        } else {
+          // User denied -> keep switch OFF (but can be turned ON manually later)
+          await AsyncStorage.setItem(ENABLED_KEY, "0").catch(() => {});
+        }
       }
     })();
 
@@ -58,71 +104,48 @@ export function RootNavigator() {
     };
   }, [isAuthed, user?.id]);
 
-  // Seeker üçün Push notification icazəsi + token save.
-  // - İlk dəfə daxil olanda OS prompt açılır (bildiriş icazəsi).
-  // - İcazə verilərsə: token backend-ə yazılır.
+  // When a push notification is tapped, open the related page.
   useEffect(() => {
-    let mounted = true;
+    let sub = null;
+
+    const handle = async (response) => {
+      try {
+        const data = response?.notification?.request?.content?.data || {};
+        if (data?.type === "job" && data?.jobId) {
+          // Fetch job fresh (so it matches current API model)
+          const job = await api.getJobById(data.jobId).catch(() => null);
+          if (job) {
+            if (navigationRef.isReady()) navigationRef.navigate("JobDetail", { job });
+            return;
+          }
+        }
+        // fallback -> open notifications inbox if seeker
+        if (navigationRef.isReady() && role === "seeker") navigationRef.navigate("SeekerNotifications");
+      } catch {
+        if (navigationRef.isReady() && role === "seeker") navigationRef.navigate("SeekerNotifications");
+      }
+    };
 
     (async () => {
-      if (!isAuthed || !user?.id) return;
-      if (role !== "seeker") return;
-
-      const ENABLE_KEY = "ASIMOS_NOTIF_ENABLED_V1";
-      const ASKED_KEY = "ASIMOS_NOTIF_ASKED_V1";
-
-      const enabledRaw = await AsyncStorage.getItem(ENABLE_KEY).catch(() => null);
-      const asked = await AsyncStorage.getItem(ASKED_KEY).catch(() => null);
-
-      // If user already explicitly disabled notifications, don't prompt again here.
-      if (enabledRaw === "0") return;
-
-      // If never asked before, prompt once automatically (point #3 requirement)
-      if (!asked) {
-        await AsyncStorage.setItem(ASKED_KEY, "1").catch(() => {});
-      }
-
-      // If enabled is null (first run) we still try once and then persist 1/0.
-      const tokenKey = "ASIMOS_EXPO_PUSH_TOKEN_V1";
-      const token = await registerForPushNotificationsAsync();
-      if (!mounted) return;
-
-      if (!token) {
-        if (enabledRaw === null) {
-          await AsyncStorage.setItem(ENABLE_KEY, "0").catch(() => {});
-        }
-        return;
-      }
-
-      const prev = await AsyncStorage.getItem(tokenKey).catch(() => null);
-      if (prev === token && enabledRaw === "1") return;
-
-      try {
-        await api.setPushToken(token);
-        await AsyncStorage.setItem(tokenKey, token).catch(() => {});
-        await AsyncStorage.setItem(ENABLE_KEY, "1").catch(() => {});
-      } catch {
-        // Ignore (backend might not have `expo_push_token` column)
-      }
+      // Handle initial open (killed -> opened by push)
+      const last = await Notifications.getLastNotificationResponseAsync().catch(() => null);
+      if (last) handle(last);
+      sub = Notifications.addNotificationResponseReceivedListener(handle);
     })();
 
     return () => {
-      mounted = false;
+      try { sub?.remove(); } catch {}
     };
-  }, [isAuthed, user?.id, role]);
+  }, [role]);
 
-  // Push notification-a klikləyəndə JobDetail aç (foreground/background).
+  // When a push notification arrives while the app is running, notify screens to refresh
   useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      try {
-        const data = response?.notification?.request?.content?.data;
-        const job = data?.job;
-        if (data?.type === "job" && job && navigationRef.isReady()) {
-          navigationRef.navigate("JobDetail", { job });
-        }
-      } catch {}
+    const sub = Notifications.addNotificationReceivedListener(() => {
+      try { DeviceEventEmitter.emit("asimos:pushReceived"); } catch {}
     });
-    return () => sub?.remove?.();
+    return () => {
+      try { sub?.remove(); } catch {}
+    };
   }, []);
 
   // While auth state is loading, show splash
@@ -153,8 +176,13 @@ export function RootNavigator() {
           </>
         ) : (
           <>
-            <Stack.Screen name="SeekerTabs" component={SeekerTabs} />
+            {needsSeekerLocation ? (
+              <Stack.Screen name="LocationAuto" component={LocationAutoScreen} />
+            ) : (
+              <Stack.Screen name="SeekerTabs" component={SeekerTabs} />
+            )}
             <Stack.Screen name="JobDetail" component={JobDetailScreen} />
+            <Stack.Screen name="SeekerNotifications" component={SeekerNotificationsScreen} />
           </>
         )}
       </Stack.Navigator>

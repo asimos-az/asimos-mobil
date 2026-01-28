@@ -84,13 +84,26 @@ export function AuthProvider({ children }) {
 
             await persist(refreshed.token, refreshed.refreshToken || parsed.refreshToken, nextUser);
           } catch (e) {
-            // If refresh fails (revoked/invalid refresh token), force re-login.
-            try { await AsyncStorage.removeItem(STORAGE_KEY); } catch {}
-            clearAuthToken();
-            if (!cancelled) {
-              setToken(null);
-              setRefreshTokenState(null);
-              setUser(null);
+            // Don't aggressively log the user out on refresh failure.
+            // This can happen due to temporary network errors or backend issues.
+            // Only clear session if the refresh token is clearly invalid/revoked.
+            const msg = String(e?.message || "").toLowerCase();
+            const looksInvalid =
+              msg.includes("invalid") ||
+              msg.includes("revoked") ||
+              msg.includes("expired") ||
+              msg.includes("refresh failed") ||
+              msg.includes("jwt") ||
+              msg.includes("unauthorized");
+
+            if (looksInvalid) {
+              try { await AsyncStorage.removeItem(STORAGE_KEY); } catch {}
+              clearAuthToken();
+              if (!cancelled) {
+                setToken(null);
+                setRefreshTokenState(null);
+                setUser(null);
+              }
             }
           }
         }
@@ -175,10 +188,6 @@ export function AuthProvider({ children }) {
       await AsyncStorage.removeItem(ROLE_HINT_KEY).catch(() => {});
       // location permission prompt-un bir dəfəlik flag-i
       await AsyncStorage.removeItem("ASIMOS_LOC_ASKED_V1").catch(() => {});
-      // notification permission prompt & settings flags
-      await AsyncStorage.removeItem("ASIMOS_NOTIF_ASKED_V1").catch(() => {});
-      await AsyncStorage.removeItem("ASIMOS_NOTIF_ENABLED_V1").catch(() => {});
-      await AsyncStorage.removeItem("ASIMOS_EXPO_PUSH_TOKEN_V1").catch(() => {});
     }
   }), [booting, token, refreshToken, user]);
 

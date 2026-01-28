@@ -1,14 +1,15 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, Pressable, StyleSheet, Text, View, DeviceEventEmitter } from "react-native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
 import { api } from "../../api/client";
 import { MapPicker } from "../../components/MapPicker";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { Card } from "../../components/Card";
 import { JobsFilterModal } from "../../components/JobsFilterModal";
+import { NotificationBell } from "../../components/NotificationBell";
 
 const RADIUS_PRESETS = [
   { label: "500m", value: 500 },
@@ -28,6 +29,7 @@ function extractWageNumber(wageText) {
 export function SeekerDailyJobsScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const [unread, setUnread] = useState(0);
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -45,6 +47,23 @@ export function SeekerDailyJobsScreen() {
 
   const location = baseLocation || user?.location;
   const didInit = useRef(false);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      api.getUnreadNotificationsCount()
+        .then((r) => setUnread(r?.unread || 0))
+        .catch(() => {});
+    }, [])
+  );
+
+  // Refresh unread count immediately when a push arrives
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener("asimos:pushReceived", () => {
+      api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => {});
+      try { loadList(); } catch {}
+    });
+    return () => sub?.remove?.();
+  }, []);
 
   const radiusOptions = useMemo(() => RADIUS_PRESETS.map((x) => ({ label: x.label, value: x.value })), []);
 
@@ -157,6 +176,7 @@ export function SeekerDailyJobsScreen() {
       <MapPicker
         visible={mapOpen}
         initial={location}
+        userLocation={user?.location || null}
         onClose={() => setMapOpen(false)}
         onPicked={async (loc) => {
           setBaseLocation(loc);
@@ -171,10 +191,14 @@ export function SeekerDailyJobsScreen() {
           <Text style={styles.sub}>Yalnız gündəlik elanlar</Text>
         </View>
 
-        <Pressable onPress={() => setFilterOpen(true)} style={styles.iconBtn}>
-          <Ionicons name="filter" size={22} color={Colors.muted} />
-          {hasActiveFilters ? <View style={styles.dot} /> : null}
-        </Pressable>
+        <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+          <NotificationBell count={unread} onPress={() => navigation.navigate("SeekerNotifications")} />
+
+          <Pressable onPress={() => setFilterOpen(true)} style={styles.iconBtn}>
+            <Ionicons name="filter" size={22} color={Colors.muted} />
+            {hasActiveFilters ? <View style={styles.dot} /> : null}
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.body}>

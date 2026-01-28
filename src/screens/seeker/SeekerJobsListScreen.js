@@ -1,14 +1,15 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, Pressable, StyleSheet, Text, View, DeviceEventEmitter } from "react-native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
 import { api } from "../../api/client";
 import { MapPicker } from "../../components/MapPicker";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { Card } from "../../components/Card";
 import { JobsFilterModal } from "../../components/JobsFilterModal";
+import { NotificationBell } from "../../components/NotificationBell";
 
 const RADIUS_PRESETS = [
   { label: "500m", value: 500 },
@@ -28,6 +29,7 @@ function extractWageNumber(wageText) {
 export function SeekerJobsListScreen() {
   const navigation = useNavigation();
   const { user, signOut } = useAuth();
+  const [unread, setUnread] = useState(0);
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -45,6 +47,22 @@ export function SeekerJobsListScreen() {
 
   const location = baseLocation || user?.location;
   const didInit = useRef(false);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => {});
+    }, [])
+  );
+
+  // Refresh unread count immediately when a push arrives
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener("asimos:pushReceived", () => {
+      // Update bell badge + refresh list so new jobs appear immediately without manual refresh
+      api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => {});
+      try { loadList(); } catch {}
+    });
+    return () => sub?.remove?.();
+  }, []);
 
   const radiusOptions = useMemo(() => RADIUS_PRESETS.map((x) => ({ label: x.label, value: x.value })), []);
 
@@ -157,6 +175,7 @@ export function SeekerJobsListScreen() {
       <MapPicker
         visible={mapOpen}
         initial={location}
+        userLocation={user?.location || null}
         onClose={() => setMapOpen(false)}
         onPicked={async (loc) => {
           setBaseLocation(loc);
@@ -166,21 +185,29 @@ export function SeekerJobsListScreen() {
       />
 
       <View style={styles.top}>
-        <View>
+        <Pressable
+          onPress={() => navigation.navigate("SeekerNotifications")}
+          style={styles.iconBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Bildirişlər"
+        >
+          <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
+          {unread > 0 ? <View style={styles.unreadBadge} /> : null}
+        </Pressable>
+
+        <View style={styles.titleWrap}>
           <Text style={styles.title}>İş elanları</Text>
-          <Text style={styles.sub}>Bütün elanlar (lokasiya + radius filter)</Text>
         </View>
 
-        <View style={styles.actions}>
-          <Pressable onPress={() => setFilterOpen(true)} style={styles.iconBtn}>
-            <Ionicons name="filter" size={22} color={Colors.muted} />
-            {hasActiveFilters ? <View style={styles.dot} /> : null}
-          </Pressable>
-
-          <Pressable onPress={signOut} style={styles.iconBtn}>
-            <Ionicons name="log-out-outline" size={22} color={Colors.muted} />
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={() => setFilterOpen(true)}
+          style={styles.iconBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Filtrlər"
+        >
+          <Ionicons name="filter" size={22} color={Colors.primary} />
+          {hasActiveFilters ? <View style={styles.dot} /> : null}
+        </Pressable>
       </View>
 
       <View style={styles.body}>
@@ -197,15 +224,53 @@ export function SeekerJobsListScreen() {
           }
           renderItem={({ item }) => (
             <Pressable onPress={() => navigation.navigate("JobDetail", { job: item })}>
-              <Card style={{ marginBottom: 12 }}>
-                <View style={styles.row}>
-                  <Text style={styles.jobTitle}>{item.title}</Text>
-                  {item.isDaily ? <Text style={styles.badge}>Gündəlik</Text> : null}
+              <Card style={{ marginBottom: 14, padding: 0, overflow: "hidden" }}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.headerLeft}>
+                    <View style={styles.statusDot} />
+                    <Text style={styles.jobTitle} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                  </View>
+
+                  {item.isDaily ? (
+                    <View style={styles.pill}>
+                      <Ionicons name="calendar-outline" size={14} color={Colors.primary} />
+                      <Text style={styles.pillText}>Gündəlik</Text>
+                    </View>
+                  ) : null}
                 </View>
-                {item.category ? <Text style={styles.meta}>Kateqoriya: {item.category}</Text> : null}
-                <Text style={styles.meta}>{item.wage || "—"}</Text>
-                {typeof item.distanceM === "number" ? <Text style={styles.meta}>Məsafə: {item.distanceM} m</Text> : null}
-                <Text style={styles.desc} numberOfLines={2}>{item.description}</Text>
+
+                <View style={styles.cardBody}>
+                  <View style={styles.metaRow}>
+                    {item.category ? (
+                      <View style={[styles.chip, styles.chipCategory]}>
+                        <Ionicons name="pricetag-outline" size={14} color={Colors.primary} />
+                        <Text style={[styles.chipText, { color: Colors.primary }]} numberOfLines={1}>
+                          {item.category}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.kvRow}>
+                    <View style={styles.kvItem}>
+                      <Ionicons name="cash-outline" size={16} color={Colors.muted} />
+                      <Text style={styles.kvText}>{item.wage || "—"}</Text>
+                    </View>
+
+                    {typeof item.distanceM === "number" ? (
+                      <View style={styles.kvItem}>
+                        <Ionicons name="navigate-outline" size={16} color={Colors.muted} />
+                        <Text style={styles.kvText}>{item.distanceM} m</Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  <Text style={styles.desc} numberOfLines={2}>
+                    {item.description}
+                  </Text>
+                </View>
               </Card>
             </Pressable>
           )}
@@ -227,9 +292,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  titleWrap: { flex: 1, alignItems: "center" },
   title: { fontSize: 18, fontWeight: "900", color: Colors.text },
-  sub: { marginTop: 4, color: Colors.muted, fontWeight: "800" },
-  actions: { flexDirection: "row", alignItems: "center", gap: 10 },
   iconBtn: {
     width: 44,
     height: 44,
@@ -239,6 +303,17 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     alignItems: "center",
     justifyContent: "center",
+  },
+  unreadBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 10,
+    height: 10,
+    borderRadius: 99,
+    backgroundColor: "#DC2626",
+    borderWidth: 2,
+    borderColor: Colors.card,
   },
   dot: {
     position: "absolute",
@@ -257,17 +332,48 @@ const styles = StyleSheet.create({
 
   two: { flexDirection: "row", gap: 10 },
 
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  badge: {
+  // Card (same style as employer)
+  cardHeader: {
+    padding: 14,
+    paddingBottom: 10,
     backgroundColor: Colors.primarySoft,
-    color: Colors.primary,
-    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  statusDot: { width: 10, height: 10, borderRadius: 99, backgroundColor: Colors.primary },
+  jobTitle: { fontSize: 16, fontWeight: "900", color: Colors.text, flex: 1 },
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: Colors.card,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 999,
-    fontWeight: "900",
   },
-
-  jobTitle: { fontSize: 16, fontWeight: "900", color: Colors.text },
-  meta: { marginTop: 6, color: Colors.muted, fontWeight: "800" },
-  desc: { marginTop: 8, color: Colors.text, lineHeight: 20 },
+  pillText: { fontWeight: "900", color: Colors.primary },
+  cardBody: { padding: 14 },
+  metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  chipCategory: { backgroundColor: Colors.primarySoft, borderColor: Colors.border },
+  chipText: { fontWeight: "900" },
+  kvRow: { flexDirection: "row", gap: 14, marginTop: 10, flexWrap: "wrap" },
+  kvItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  kvText: { fontWeight: "900", color: Colors.muted },
+  desc: { marginTop: 10, color: Colors.text, lineHeight: 20, fontWeight: "700" },
 });

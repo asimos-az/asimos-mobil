@@ -1,5 +1,5 @@
-import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
 import { Card } from "../../components/Card";
@@ -7,12 +7,31 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { MapPreview } from "../../components/MapPreview";
 import { useAuth } from "../../context/AuthContext";
+import { api } from "../../api/client";
 
 export function JobDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const job = route.params?.job;
+  const routeJob = route.params?.job;
   const { user } = useAuth();
+
+  const [job, setJob] = useState(routeJob || null);
+  const [saving, setSaving] = useState(false);
+
+  // Always refresh from server when opened from push or older list item
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        if (!routeJob?.id) return;
+        const fresh = await api.getJobById(routeJob.id);
+        if (alive && fresh) setJob(fresh);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => { alive = false; };
+  }, [routeJob?.id]);
 
   if (!job) {
     return (
@@ -32,13 +51,67 @@ export function JobDetailScreen() {
     );
   }
 
-  const jobLoc = job.location || null;
+  const jobLoc = job?.location || null;
   const userLoc = user?.location || null;
 
   const jt = (job.jobType || job.job_type || (job.isDaily ? "temporary" : null));
   const isTemporary = jt === "temporary";
   const isPermanent = jt === "permanent";
   const durationDays = (job.durationDays ?? job.duration_days ?? null);
+
+  const status = (job.status || job.jobStatus || "open").toLowerCase();
+  const isOwnerEmployer = useMemo(() => {
+    return user?.role === "employer" && !!job?.createdBy && job.createdBy === user?.id;
+  }, [user?.role, user?.id, job?.createdBy]);
+
+  async function closeJob() {
+    Alert.alert(
+      "Elanı bağla",
+      "İşi tapdınsa elan bağlana bilər. Bağlandıqdan sonra iş axtaranlara görünməyəcək.",
+      [
+        { text: "Ləğv et", style: "cancel" },
+        {
+          text: "Bağla",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setSaving(true);
+              const updated = await api.closeJob(job.id, { reason: "filled" });
+              if (updated) setJob(updated);
+            } catch (e) {
+              Alert.alert("Xəta", e.message);
+            } finally {
+              setSaving(false);
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  async function reopenJob() {
+    Alert.alert(
+      "Elanı yenidən aç",
+      "Elanı yenidən aktiv etmək istəyirsən?", 
+      [
+        { text: "Ləğv et", style: "cancel" },
+        {
+          text: "Aç",
+          onPress: async () => {
+            try {
+              setSaving(true);
+              const updated = await api.reopenJob(job.id);
+              if (updated) setJob(updated);
+            } catch (e) {
+              Alert.alert("Xəta", e.message);
+            } finally {
+              setSaving(false);
+            }
+          },
+        },
+      ]
+    );
+  }
 
   return (
     <SafeScreen>
@@ -61,6 +134,23 @@ export function JobDetailScreen() {
               <Text style={styles.badge}>Daimi</Text>
             ) : null}
           </View>
+
+          {isOwnerEmployer ? (
+            <View style={{ marginTop: 10 }}>
+              <Text style={styles.meta}>Status: {status === "closed" ? "Bağlı" : "Aktiv"}</Text>
+              <View style={styles.actions}>
+                {status === "closed" ? (
+                  <Pressable onPress={reopenJob} disabled={saving} style={[styles.actionBtn, styles.actionBtnPrimary, saving && { opacity: 0.6 }]}>
+                    <Text style={styles.actionBtnText}>Yenidən aç</Text>
+                  </Pressable>
+                ) : (
+                  <Pressable onPress={closeJob} disabled={saving} style={[styles.actionBtn, styles.actionBtnDanger, saving && { opacity: 0.6 }]}>
+                    <Text style={[styles.actionBtnText, { color: "#fff" }]}>Elanı bağla</Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+          ) : null}
 
           {job.category ? <Text style={styles.meta}>Kateqoriya: {job.category}</Text> : null}
           {job.wage ? <Text style={styles.meta}>Maaş: {job.wage}</Text> : null}
@@ -135,6 +225,25 @@ const styles = StyleSheet.create({
 
   jobTitle: { fontSize: 18, fontWeight: "900", color: Colors.text },
   meta: { marginTop: 8, color: Colors.muted, fontWeight: "800" },
+
+  actions: { marginTop: 10, flexDirection: "row", gap: 10 },
+  actionBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  actionBtnPrimary: {
+    backgroundColor: Colors.primarySoft,
+    borderColor: Colors.border,
+  },
+  actionBtnDanger: {
+    backgroundColor: "#E53935",
+    borderColor: "#E53935",
+  },
+  actionBtnText: { fontWeight: "900", color: Colors.text },
 
   descTitle: { color: Colors.text, fontWeight: "900" },
   desc: { marginTop: 6, color: Colors.text, lineHeight: 20 },

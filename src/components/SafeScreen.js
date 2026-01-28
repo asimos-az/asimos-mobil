@@ -8,7 +8,8 @@ export function SafeScreen({ children }) {
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        // iOS: padding works best; Android: height + android.softwareKeyboardLayoutMode=resize
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
       >
         <View style={styles.flex}>{children}</View>

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Alert, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { BackgroundDecor } from "../../components/BackgroundDecor";
@@ -76,7 +76,13 @@ export function VerifyOtpScreen() {
       <View style={styles.screen}>
         <BackgroundDecor />
 
-        <View style={styles.center}>
+        <ScrollView
+          contentContainerStyle={styles.center}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentInsetAdjustmentBehavior="always"
+          showsVerticalScrollIndicator={false}
+        >
           <Image source={require("../../../assets/logo.jpeg")} style={styles.logo} resizeMode="contain" />
           <Card>
             <Text style={styles.title}>OTP təsdiqi</Text>
@@ -108,7 +114,7 @@ export function VerifyOtpScreen() {
               <Text style={styles.back}>← Geri</Text>
             </Pressable>
           </Card>
-        </View>
+        </ScrollView>
       </View>
     </SafeScreen>
   );
@@ -116,7 +122,7 @@ export function VerifyOtpScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.bg },
-  center: { flex: 1, padding: 16, justifyContent: "center" },
+  center: { flexGrow: 1, padding: 16, paddingBottom: 160, justifyContent: "center" },
   logo: {
     width: 92,
     height: 92,

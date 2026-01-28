@@ -104,6 +104,8 @@ API: ${API_BASE_URL}` : "";
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          contentInsetAdjustmentBehavior="always"
           showsVerticalScrollIndicator={false}
         >
         <View style={styles.center}>
@@ -211,7 +213,8 @@ API: ${API_BASE_URL}` : "";
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  scroll: { flexGrow: 1, padding: 16, paddingBottom: 40 },
+  // Extra bottom padding so inputs never hide behind keyboard / home indicator
+  scroll: { flexGrow: 1, padding: 16, paddingBottom: 160 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
 
   logo: { width: 120, height: 120, marginBottom: 8 },

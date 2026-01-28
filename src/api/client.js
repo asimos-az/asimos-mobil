@@ -135,5 +135,17 @@ export const api = {
   listJobs: () => request("/jobs"),
   listMyJobs: (createdBy) => request(`/jobs?createdBy=${encodeURIComponent(createdBy)}`),
   listJobsWithSearch: ({ q, lat, lng, radius_m, daily }) => request(`/jobs${qs({ q, lat, lng, radius_m, daily })}`),
+  getJobById: (id) => request(`/jobs/${encodeURIComponent(String(id))}`),
   createJob: (payload) => request("/jobs", { method: "POST", body: payload }),
+  closeJob: (id, { reason } = {}) => request(`/jobs/${encodeURIComponent(String(id))}/close`, { method: "PATCH", body: { reason } }),
+  reopenJob: (id) => request(`/jobs/${encodeURIComponent(String(id))}/reopen`, { method: "PATCH" }),
+
+  // Categories (admin-managed)
+  listCategories: () => request("/categories"),
+
+  // Notifications
+  listMyNotifications: ({ limit = 50, offset = 0 } = {}) => request(`/me/notifications${qs({ limit, offset })}`),
+  getUnreadNotificationsCount: () => request("/me/notifications/unread-count"),
+  markNotificationRead: (id) => request(`/me/notifications/${encodeURIComponent(String(id))}/read`, { method: "PATCH" }),
+  markAllNotificationsRead: () => request("/me/notifications/read-all", { method: "POST" }),
 };

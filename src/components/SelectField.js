@@ -22,6 +22,7 @@ export function SelectField({
   onChange,
   placeholder = "Seç",
   options = [],
+  loading = false,
 }) {
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
@@ -38,13 +39,16 @@ export function SelectField({
       {label ? <Text style={styles.label}>{label}</Text> : null}
 
       <Pressable
-        onPress={() => setOpen(true)}
+        onPress={() => {
+          if (!loading) setOpen(true);
+        }}
+        disabled={loading}
         style={styles.field}
         accessibilityRole="button"
         accessibilityLabel={label ? `${label} seç` : "Seç"}
       >
-        <Text style={[styles.value, !currentLabel && styles.placeholder]} numberOfLines={1}>
-          {currentLabel || placeholder}
+        <Text style={[styles.value, (!currentLabel || loading) && styles.placeholder]} numberOfLines={1}>
+          {loading ? "Yüklənir..." : (currentLabel || placeholder)}
         </Text>
         <Ionicons name="chevron-down" size={18} color={Colors.muted} />
       </Pressable>
