@@ -14,6 +14,7 @@ export function JobDetailScreen() {
   const route = useRoute();
   const routeJob = route.params?.job;
   const { user } = useAuth();
+  const isAuthed = !!user;
 
   const [job, setJob] = useState(routeJob || null);
   const [saving, setSaving] = useState(false);
@@ -155,48 +156,86 @@ export function JobDetailScreen() {
           {job.category ? <Text style={styles.meta}>Kateqoriya: {job.category}</Text> : null}
           {job.wage ? <Text style={styles.meta}>Maaş: {job.wage}</Text> : null}
           {isTemporary && durationDays ? <Text style={styles.meta}>Müddət: {durationDays} gün</Text> : null}
-          {job.whatsapp ? (
-            <Pressable
-              onPress={() => {
-                const raw = String(job.whatsapp || "").replace(/\s+/g, "");
-                const digits = raw.replace(/[^+0-9]/g, "");
-                const num = digits.startsWith("+") ? digits.slice(1) : digits;
-                const url = `https://wa.me/${num}`;
-                Linking.openURL(url).catch(() => {});
-              }}
-              style={styles.contactRow}
-            >
-              <Ionicons name="logo-whatsapp" size={18} color={Colors.text} />
-              <Text style={styles.contactText}>{job.whatsapp}</Text>
-            </Pressable>
-          ) : null}
 
-          {job.phone ? (
-            <Pressable
-              onPress={() => {
-                const raw = String(job.phone || "").replace(/\s+/g, "");
-                Linking.openURL(`tel:${raw}`).catch(() => {});
-              }}
-              style={styles.contactRow}
-            >
-              <Ionicons name="call" size={18} color={Colors.text} />
-              <Text style={styles.contactText}>{job.phone}</Text>
-            </Pressable>
-          ) : null}
+          {/* Contact info is gated for guests */}
+          {(job.whatsapp || job.phone || job.link) ? (
+            <View style={{ marginTop: 10 }}>
+              <Text style={styles.descTitle}>Əlaqə</Text>
+              {!isAuthed ? (
+                <Pressable
+                  onPress={() => {
+                    Alert.alert(
+                      "Qeydiyyat tələb olunur",
+                      "WhatsApp, əlaqə nömrəsi və linki görmək üçün qeydiyyatdan keçin və ya daxil olun.",
+                      [
+                        { text: "Ləğv", style: "cancel" },
+                        {
+                          text: "Qeydiyyat / Login",
+                          onPress: () => {
+                            navigation.navigate("AuthEntry", {
+                              redirect: { screen: "JobDetail", params: { job } },
+                            });
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                  style={[styles.contactRow, styles.lockRow]}
+                >
+                  <Ionicons name="lock-closed" size={18} color={Colors.primary} />
+                  <Text style={[styles.contactText, { color: Colors.primary, fontWeight: "900" }]}
+                  >Əlaqə məlumatlarını gör</Text>
+                  <View style={{ flex: 1 }} />
+                  <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
+                </Pressable>
+              ) : (
+                <>
+                  {job.whatsapp ? (
+                    <Pressable
+                      onPress={() => {
+                        const raw = String(job.whatsapp || "").replace(/\s+/g, "");
+                        const digits = raw.replace(/[^+0-9]/g, "");
+                        const num = digits.startsWith("+") ? digits.slice(1) : digits;
+                        const url = `https://wa.me/${num}`;
+                        Linking.openURL(url).catch(() => {});
+                      }}
+                      style={styles.contactRow}
+                    >
+                      <Ionicons name="logo-whatsapp" size={18} color={Colors.text} />
+                      <Text style={styles.contactText}>{job.whatsapp}</Text>
+                    </Pressable>
+                  ) : null}
 
-          {job.link ? (
-            <Pressable
-              onPress={() => {
-                let url = String(job.link || "").trim();
-                if (!url) return;
-                if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
-                Linking.openURL(url).catch(() => {});
-              }}
-              style={styles.contactRow}
-            >
-              <Ionicons name="link" size={18} color={Colors.text} />
-              <Text style={styles.contactText}>{job.link}</Text>
-            </Pressable>
+                  {job.phone ? (
+                    <Pressable
+                      onPress={() => {
+                        const raw = String(job.phone || "").replace(/\s+/g, "");
+                        Linking.openURL(`tel:${raw}`).catch(() => {});
+                      }}
+                      style={styles.contactRow}
+                    >
+                      <Ionicons name="call" size={18} color={Colors.text} />
+                      <Text style={styles.contactText}>{job.phone}</Text>
+                    </Pressable>
+                  ) : null}
+
+                  {job.link ? (
+                    <Pressable
+                      onPress={() => {
+                        let url = String(job.link || "").trim();
+                        if (!url) return;
+                        if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+                        Linking.openURL(url).catch(() => {});
+                      }}
+                      style={styles.contactRow}
+                    >
+                      <Ionicons name="link" size={18} color={Colors.text} />
+                      <Text style={styles.contactText}>{job.link}</Text>
+                    </Pressable>
+                  ) : null}
+                </>
+              )}
+            </View>
           ) : null}
 
           {job.voen ? <Text style={styles.meta}>VOEN: {job.voen}</Text> : null}
@@ -281,6 +320,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     backgroundColor: Colors.bg,
+  },
+  lockRow: {
+    backgroundColor: Colors.primarySoft,
+    borderColor: Colors.primary,
   },
   contactText: { color: Colors.text, fontWeight: '900' },
 

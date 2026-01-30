@@ -187,7 +187,23 @@ export function SeekerMapScreen() {
         </View>
 
         <View style={styles.actions}>
-          <NotificationBell count={unread} onPress={() => navigation.navigate("SeekerNotifications")} />
+          <NotificationBell
+            count={unread}
+            onPress={() => {
+              if (!user) {
+                Alert.alert(
+                  "Qeydiyyat tələb olunur",
+                  "Bildirişləri görmək üçün daxil olmalısan.",
+                  [
+                    { text: "Ləğv", style: "cancel" },
+                    { text: "Login / Qeydiyyat", onPress: () => navigation.navigate("AuthEntry") },
+                  ]
+                );
+                return;
+              }
+              navigation.navigate("SeekerNotifications");
+            }}
+          />
 
           <Pressable onPress={load} style={styles.iconBtn}>
             <Ionicons name={loading ? "time-outline" : "refresh"} size={22} color={Colors.muted} />

@@ -197,7 +197,23 @@ export function SeekerDailyJobsScreen() {
         </View>
 
         <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
-          <NotificationBell count={unread} onPress={() => navigation.navigate("SeekerNotifications")} />
+          <NotificationBell
+            count={unread}
+            onPress={() => {
+              if (!user) {
+                Alert.alert(
+                  "Qeydiyyat tələb olunur",
+                  "Bildirişləri görmək üçün daxil olmalısan.",
+                  [
+                    { text: "Ləğv", style: "cancel" },
+                    { text: "Login / Qeydiyyat", onPress: () => navigation.navigate("AuthEntry") },
+                  ]
+                );
+                return;
+              }
+              navigation.navigate("SeekerNotifications");
+            }}
+          />
 
           <Pressable onPress={() => setFilterOpen(true)} style={styles.iconBtn}>
             <Ionicons name="filter" size={22} color={Colors.muted} />

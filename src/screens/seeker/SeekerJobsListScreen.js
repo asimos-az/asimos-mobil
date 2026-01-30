@@ -70,6 +70,13 @@ export function SeekerJobsListScreen() {
     return () => sub?.remove?.();
   }, []);
 
+  // Guest mode: on first mount, load jobs even if we don't have a saved location yet.
+  useEffect(() => {
+    if (didInit.current) return;
+    didInit.current = true;
+    loadList();
+  }, []);
+
   const radiusOptions = useMemo(() => RADIUS_PRESETS.map((x) => ({ label: x.label, value: x.value })), []);
 
   const categories = useMemo(() => {
@@ -105,13 +112,14 @@ export function SeekerJobsListScreen() {
   async function loadList(locOverride) {
     try {
       const loc = locOverride || baseLocation || user?.location;
-      if (!loc?.lat || !loc?.lng) return;
       setLoading(true);
+      // Guest mode: if the user hasn't shared location yet, still show jobs.
+      // Backend will fallback to "latest open" when lat/lng is missing.
       const data = await api.listJobsWithSearch({
         q: q?.trim() || "",
-        lat: loc.lat,
-        lng: loc.lng,
-        radius_m: radius,
+        lat: loc?.lat,
+        lng: loc?.lng,
+        radius_m: loc?.lat && loc?.lng ? radius : undefined,
         daily: undefined,
       });
       setItems(data);
@@ -193,7 +201,20 @@ export function SeekerJobsListScreen() {
 
       <View style={styles.top}>
         <Pressable
-          onPress={() => navigation.navigate("SeekerNotifications")}
+          onPress={() => {
+            if (!user) {
+              Alert.alert(
+                "Qeydiyyat tələb olunur",
+                "Bildirişləri görmək üçün daxil olmalısan.",
+                [
+                  { text: "Ləğv", style: "cancel" },
+                  { text: "Login / Qeydiyyat", onPress: () => navigation.navigate("AuthEntry") },
+                ]
+              );
+              return;
+            }
+            navigation.navigate("SeekerNotifications");
+          }}
           style={styles.iconBtn}
           accessibilityRole="button"
           accessibilityLabel="Bildirişlər"

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Alert, Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { BackgroundDecor } from "../../components/BackgroundDecor";
@@ -19,6 +19,8 @@ const ROLE_HINT_KEY = "ASIMOS_ROLE_HINT_V1";
 export function AuthEntryScreen() {
   const { signIn, startRegister } = useAuth();
   const nav = useNavigation();
+  const route = useRoute();
+  const redirect = route?.params?.redirect;
 
   const [mode, setMode] = useState(MODE.LOGIN);
   const [role, setRole] = useState(ROLE.ALICI);
@@ -55,6 +57,13 @@ export function AuthEntryScreen() {
           return;
         }
         await signIn({ email, password, roleHint: role });
+        // Close modal and return to the previous screen (e.g., JobDetail)
+        if (nav.canGoBack()) nav.goBack();
+        if (redirect?.screen) {
+          requestAnimationFrame(() => {
+            try { nav.navigate(redirect.screen, redirect.params || {}); } catch {}
+          });
+        }
         return;
       }
 
@@ -79,12 +88,26 @@ export function AuthEntryScreen() {
 
       if (res?.needsOtp) {
         // OTP kod emailə göndərilir və user kodu daxil edib qeydiyyatı tamamlayır.
-        nav.navigate("VerifyOtp", { email, password, role, fullName, companyName: role === ROLE.SATICI ? companyName : undefined, phone });
+        nav.navigate("VerifyOtp", {
+          email,
+          password,
+          role,
+          fullName,
+          companyName: role === ROLE.SATICI ? companyName : undefined,
+          phone,
+          redirect,
+        });
         return;
       }
 
       if (res?.token && res?.refreshToken && res?.user) {
         await signIn({ email, password, roleHint: role });
+        if (nav.canGoBack()) nav.goBack();
+        if (redirect?.screen) {
+          requestAnimationFrame(() => {
+            try { nav.navigate(redirect.screen, redirect.params || {}); } catch {}
+          });
+        }
       }
     } catch (e) {
       const apiInfo = typeof __DEV__ !== "undefined" && __DEV__ ? `

@@ -154,10 +154,22 @@ export function RootNavigator() {
   return (
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {/* Guest mode: allow browsing jobs without login. */}
         {!isAuthed ? (
           <>
-            <Stack.Screen name="AuthEntry" component={AuthEntryScreen} />
-            <Stack.Screen name="VerifyOtp" component={VerifyOtpScreen} />
+            <Stack.Screen name="SeekerTabs" component={SeekerTabs} />
+            <Stack.Screen name="JobDetail" component={JobDetailScreen} />
+            {/* Auth screens are still reachable (opened when user taps locked contact info) */}
+            <Stack.Screen
+              name="AuthEntry"
+              component={AuthEntryScreen}
+              options={{ presentation: "modal" }}
+            />
+            <Stack.Screen
+              name="VerifyOtp"
+              component={VerifyOtpScreen}
+              options={{ presentation: "modal" }}
+            />
           </>
         ) : role === "employer" ? (
           <>

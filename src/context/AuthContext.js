@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api, setAuthToken, setRefreshToken, clearAuthToken, setTokenUpdateHandler } from "../api/client";
+import { navigationRef } from "../navigation/navigationRef";
 
 const AuthContext = createContext(null);
 const STORAGE_KEY = "ASIMOS_AUTH_V2";
@@ -37,6 +38,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [refreshToken, setRefreshTokenState] = useState(null);
   const [user, setUser] = useState(null);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,6 +118,7 @@ export function AuthProvider({ children }) {
 
   const value = useMemo(() => ({
     booting,
+    isSigningOut,
     token,
     refreshToken,
     user,
@@ -167,6 +170,22 @@ export function AuthProvider({ children }) {
     },
 
     signOut: async () => {
+      // Prevent a 1-frame flash of the guest-gate UI while we reset navigation
+      setIsSigningOut(true);
+
+      // First: navigate away from Profile to Jobs list
+      try {
+        if (navigationRef.isReady()) {
+          navigationRef.resetRoot({
+            index: 0,
+            routes: [{ name: "SeekerTabs", params: { screen: "SeekerJobs" } }],
+          });
+        }
+      } catch {
+        // ignore
+      }
+
+      // Then: clear auth state + persisted session
       setToken(null);
       setRefreshTokenState(null);
       setUser(null);
@@ -175,8 +194,11 @@ export function AuthProvider({ children }) {
       await AsyncStorage.removeItem(ROLE_HINT_KEY).catch(() => {});
       // location permission prompt-un bir dəfəlik flag-i
       await AsyncStorage.removeItem("ASIMOS_LOC_ASKED_V1").catch(() => {});
+
+      // Small timeout to ensure UI stays clean during navigation transition
+      setTimeout(() => setIsSigningOut(false), 300);
     }
-  }), [booting, token, refreshToken, user]);
+  }), [booting, isSigningOut, token, refreshToken, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

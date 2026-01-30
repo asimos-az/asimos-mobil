@@ -9,11 +9,13 @@ import { SeekerJobsListScreen } from "../screens/seeker/SeekerJobsListScreen";
 import { SeekerDailyJobsScreen } from "../screens/seeker/SeekerDailyJobsScreen";
 import { SeekerMapScreen } from "../screens/seeker/SeekerMapScreen";
 import { SeekerProfileScreen } from "../screens/seeker/SeekerProfileScreen";
+import { useAuth } from "../context/AuthContext";
 
 const Tab = createBottomTabNavigator();
 
 export function SeekerTabs() {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const safeBottom = insets.bottom || (Platform.OS === "android" ? 16 : 0);
   const bottomOffset = Math.max(safeBottom, 10);
   return (
@@ -75,6 +77,15 @@ export function SeekerTabs() {
       <Tab.Screen
         name="SeekerProfile"
         component={SeekerProfileScreen}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Guest mode: go directly to Login/Register instead of showing a profile CTA.
+            if (!user) {
+              e.preventDefault();
+              navigation.navigate("AuthEntry");
+            }
+          },
+        })}
         options={{
           tabBarIcon: ({ focused }) => (
             <Ionicons

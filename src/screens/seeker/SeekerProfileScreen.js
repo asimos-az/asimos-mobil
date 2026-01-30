@@ -16,7 +16,29 @@ import { api } from "../../api/client";
 
 export function SeekerProfileScreen() {
   const navigation = useNavigation();
-  const { user, signOut, updateLocation } = useAuth();
+  const { user, signOut, updateLocation, isSigningOut } = useAuth();
+
+  // Guest mode: profile requires an account
+  if (!user) {
+    if (isSigningOut) return null;
+    return (
+      <SafeScreen>
+        <View style={styles.guestWrap}>
+          <View style={styles.guestIcon}>
+            <Ionicons name="lock-closed" size={22} color={Colors.primary} />
+          </View>
+          <Text style={styles.guestTitle}>Profil üçün daxil ol</Text>
+          <Text style={styles.guestSub}>
+            Bildirişlər, lokasiya və əlaqə məlumatlarını görmək üçün qeydiyyatdan keç.
+          </Text>
+          <PrimaryButton
+            title="Qeydiyyat / Login"
+            onPress={() => navigation.navigate("AuthEntry")}
+          />
+        </View>
+      </SafeScreen>
+    );
+  }
 
   const [locLoading, setLocLoading] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
@@ -279,6 +301,26 @@ export function SeekerProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  guestWrap: {
+    flex: 1,
+    padding: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  guestIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  guestTitle: { fontSize: 18, fontWeight: "900", color: Colors.text },
+  guestSub: { textAlign: "center", color: Colors.muted, fontWeight: "800", lineHeight: 18 },
+
   header: {
     paddingHorizontal: 16,
     paddingTop: 16,

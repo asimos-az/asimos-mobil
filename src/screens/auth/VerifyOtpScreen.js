@@ -24,6 +24,7 @@ export function VerifyOtpScreen() {
   const fullName = route.params?.fullName || "";
   const companyName = route.params?.companyName ?? null;
   const phone = route.params?.phone ?? null;
+  const redirect = route.params?.redirect || null;
 
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -49,7 +50,13 @@ export function VerifyOtpScreen() {
     setLoading(true);
     try {
       await verifyEmailOtp({ email, code: clean, password, role: roleHint, fullName, companyName, phone });
-      // RootNavigator avtomatik panelə keçəcək
+      // Close modal and return to previous screen (e.g., JobDetail)
+      if (nav.canGoBack()) nav.goBack();
+      if (redirect?.screen) {
+        requestAnimationFrame(() => {
+          try { nav.navigate(redirect.screen, redirect.params || {}); } catch {}
+        });
+      }
     } catch (e) {
       Alert.alert("Xəta", e.message || "OTP doğrulanmadı");
     } finally {
