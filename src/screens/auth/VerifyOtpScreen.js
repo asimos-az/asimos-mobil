@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { BackgroundDecor } from "../../components/BackgroundDecor";
@@ -8,6 +8,7 @@ import { PrimaryButton } from "../../components/PrimaryButton";
 import { Input } from "../../components/Input";
 import { Colors } from "../../theme/colors";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 
 /**
  * Qeydiyyat zamanı emailə OTP (kod) göndərilir.
@@ -29,6 +30,7 @@ export function VerifyOtpScreen() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
+  const toast = useToast();
 
   const hint = useMemo(() => {
     if (!email) return "";
@@ -38,27 +40,37 @@ export function VerifyOtpScreen() {
   async function onVerify() {
     if (loading) return;
     if (!email || !password) {
-      Alert.alert("Xəta", "Email və ya şifrə tapılmadı. Geri qayıdıb yenidən cəhd et.");
+      toast.show("Email və ya şifrə tapılmadı. Geri qayıdıb yenidən cəhd et.", "error");
       return;
     }
     const clean = String(code || "").replace(/\s+/g, "").trim();
     if (!/^\d{6,8}$/.test(clean)) {
-      Alert.alert("Xəta", "OTP kod 6 (və ya 8) rəqəmli olmalıdır.");
+      toast.show("OTP kod 6 (və ya 8) rəqəmli olmalıdır.", "error");
       return;
     }
 
     setLoading(true);
     try {
-      await verifyEmailOtp({ email, code: clean, password, role: roleHint, fullName, companyName, phone });
-      // Close modal and return to previous screen (e.g., JobDetail)
+      const res = await verifyEmailOtp({ email, code: clean, password, role: roleHint, fullName, companyName, phone });
+
+      if (res?.pendingApproval) {
+        toast.show(res.message || "Hesabınız təsdiq gözləyir.", "success");
+        setTimeout(() => {
+          if (nav.canGoBack()) nav.goBack();
+          // Or navigate to Login if available
+        }, 1500);
+        return;
+      }
+
+      // Close modal and return to previous screen
       if (nav.canGoBack()) nav.goBack();
       if (redirect?.screen) {
         requestAnimationFrame(() => {
-          try { nav.navigate(redirect.screen, redirect.params || {}); } catch {}
+          try { nav.navigate(redirect.screen, redirect.params || {}); } catch { }
         });
       }
     } catch (e) {
-      Alert.alert("Xəta", e.message || "OTP doğrulanmadı");
+      toast.show(e.message || "OTP doğrulanmadı", "error");
     } finally {
       setLoading(false);
     }
@@ -66,13 +78,16 @@ export function VerifyOtpScreen() {
 
   async function onResend() {
     if (resendLoading) return;
-    if (!email) return Alert.alert("Xəta", "Email tapılmadı");
+    if (!email) {
+      toast.show("Email tapılmadı", "error");
+      return;
+    }
     setResendLoading(true);
     try {
       await resendEmailOtp({ email });
-      Alert.alert("Uğurlu", "OTP kod yenidən göndərildi");
+      toast.show("OTP kod yenidən göndərildi", "success");
     } catch (e) {
-      Alert.alert("Xəta", e.message || "Göndərmək mümkün olmadı");
+      toast.show(e.message || "Göndərmək mümkün olmadı", "error");
     } finally {
       setResendLoading(false);
     }

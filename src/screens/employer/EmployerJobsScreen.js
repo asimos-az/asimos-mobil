@@ -35,6 +35,7 @@ export function EmployerJobsScreen() {
   const statusLabel = useMemo(
     () => ({
       open: { text: "Aktiv", dot: "#16A34A", chipBg: "#E9FBEF", chipText: "#0E7A37" },
+      pending: { text: "Gözləyir", dot: "#F59E0B", chipBg: "#FEF3C7", chipText: "#D97706" }, // Yellow/Orange
       closed: { text: "Bağlı", dot: "#DC2626", chipBg: "#FFECEC", chipText: "#B91C1C" },
     }),
     []

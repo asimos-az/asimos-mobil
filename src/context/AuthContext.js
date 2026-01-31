@@ -53,7 +53,7 @@ export function AuthProvider({ children }) {
           STORAGE_KEY,
           JSON.stringify({ token: nextToken, refreshToken: nextRefresh, user: nextUser ?? user })
         );
-      } catch {}
+      } catch { }
     });
 
     (async () => {
@@ -87,7 +87,7 @@ export function AuthProvider({ children }) {
             await persist(refreshed.token, refreshed.refreshToken || parsed.refreshToken, nextUser);
           } catch (e) {
             // If refresh fails (revoked/invalid refresh token), force re-login.
-            try { await AsyncStorage.removeItem(STORAGE_KEY); } catch {}
+            try { await AsyncStorage.removeItem(STORAGE_KEY); } catch { }
             clearAuthToken();
             if (!cancelled) {
               setToken(null);
@@ -131,7 +131,7 @@ export function AuthProvider({ children }) {
       if (!nextUser.role && roleHint) {
         const hint = normalizeRole(roleHint) || roleHint;
         nextUser.role = hint;
-        await AsyncStorage.setItem(ROLE_HINT_KEY, hint).catch(() => {});
+        await AsyncStorage.setItem(ROLE_HINT_KEY, hint).catch(() => { });
       }
       await persist(res.token, res.refreshToken, nextUser);
       return nextUser;
@@ -145,6 +145,12 @@ export function AuthProvider({ children }) {
     // Step 2: verify OTP => session tokens
     verifyEmailOtp: async ({ email, code, password, role, fullName, companyName, phone }) => {
       const res = await api.verifyOtp({ email, code, password, role, fullName, companyName, phone });
+
+      // If pending approval, don't login/persist
+      if (res.pendingApproval) {
+        return res;
+      }
+
       const nextUser = { ...(res.user || {}) };
       nextUser.role = normalizeRole(nextUser.role) || null;
       if (!nextUser.role) {
@@ -165,7 +171,7 @@ export function AuthProvider({ children }) {
       try {
         const res = await api.updateMyLocation(location);
         if (res?.user) await persist(token, refreshToken, res.user);
-      } catch {}
+      } catch { }
       return nextUser;
     },
 
@@ -191,9 +197,9 @@ export function AuthProvider({ children }) {
       setUser(null);
       clearAuthToken();
       await AsyncStorage.removeItem(STORAGE_KEY);
-      await AsyncStorage.removeItem(ROLE_HINT_KEY).catch(() => {});
+      await AsyncStorage.removeItem(ROLE_HINT_KEY).catch(() => { });
       // location permission prompt-un bir dəfəlik flag-i
-      await AsyncStorage.removeItem("ASIMOS_LOC_ASKED_V1").catch(() => {});
+      await AsyncStorage.removeItem("ASIMOS_LOC_ASKED_V1").catch(() => { });
 
       // Small timeout to ensure UI stays clean during navigation transition
       setTimeout(() => setIsSigningOut(false), 300);

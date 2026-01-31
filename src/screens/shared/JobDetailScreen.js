@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View, Alert } from "react-native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
 import { Card } from "../../components/Card";
@@ -8,6 +8,8 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { MapPreview } from "../../components/MapPreview";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../api/client";
+import { RateUserModal } from "../../components/RateUserModal";
+import { useToast } from "../../context/ToastContext";
 
 export function JobDetailScreen() {
   const navigation = useNavigation();
@@ -18,6 +20,8 @@ export function JobDetailScreen() {
 
   const [job, setJob] = useState(routeJob || null);
   const [saving, setSaving] = useState(false);
+  const [rateModalOpen, setRateModalOpen] = useState(false);
+  const toast = useToast();
 
   // Always refresh from server when opened from push or older list item
   useEffect(() => {
@@ -78,9 +82,12 @@ export function JobDetailScreen() {
             try {
               setSaving(true);
               const updated = await api.closeJob(job.id, { reason: "filled" });
-              if (updated) setJob(updated);
+              if (updated) {
+                setJob(updated);
+                toast.show("Elan bağlandı", "success");
+              }
             } catch (e) {
-              Alert.alert("Xəta", e.message);
+              toast.show(e.message, "error");
             } finally {
               setSaving(false);
             }
@@ -93,7 +100,7 @@ export function JobDetailScreen() {
   async function reopenJob() {
     Alert.alert(
       "Elanı yenidən aç",
-      "Elanı yenidən aktiv etmək istəyirsən?", 
+      "Elanı yenidən aktiv etmək istəyirsən?",
       [
         { text: "Ləğv et", style: "cancel" },
         {
@@ -102,9 +109,12 @@ export function JobDetailScreen() {
             try {
               setSaving(true);
               const updated = await api.reopenJob(job.id);
-              if (updated) setJob(updated);
+              if (updated) {
+                setJob(updated);
+                toast.show("Elan aktiv edildi", "success");
+              }
             } catch (e) {
-              Alert.alert("Xəta", e.message);
+              toast.show(e.message, "error");
             } finally {
               setSaving(false);
             }
@@ -138,9 +148,17 @@ export function JobDetailScreen() {
 
           {isOwnerEmployer ? (
             <View style={{ marginTop: 10 }}>
-              <Text style={styles.meta}>Status: {status === "closed" ? "Bağlı" : "Aktiv"}</Text>
+              <Text style={styles.meta}>Status: {
+                status === "pending" ? "Gözləyir (Yoxlanışda)" :
+                  status === "closed" ? "Bağlı" :
+                    "Aktiv"
+              }</Text>
               <View style={styles.actions}>
-                {status === "closed" ? (
+                {status === "pending" ? (
+                  <View style={[styles.actionBtn, { borderColor: "#F59E0B", backgroundColor: "#FEF3C7" }]}>
+                    <Text style={[styles.actionBtnText, { color: "#D97706" }]}>Moderasiya gözləyir</Text>
+                  </View>
+                ) : status === "closed" ? (
                   <Pressable onPress={reopenJob} disabled={saving} style={[styles.actionBtn, styles.actionBtnPrimary, saving && { opacity: 0.6 }]}>
                     <Text style={styles.actionBtnText}>Yenidən aç</Text>
                   </Pressable>
@@ -197,7 +215,7 @@ export function JobDetailScreen() {
                         const digits = raw.replace(/[^+0-9]/g, "");
                         const num = digits.startsWith("+") ? digits.slice(1) : digits;
                         const url = `https://wa.me/${num}`;
-                        Linking.openURL(url).catch(() => {});
+                        Linking.openURL(url).catch(() => { });
                       }}
                       style={styles.contactRow}
                     >
@@ -210,7 +228,7 @@ export function JobDetailScreen() {
                     <Pressable
                       onPress={() => {
                         const raw = String(job.phone || "").replace(/\s+/g, "");
-                        Linking.openURL(`tel:${raw}`).catch(() => {});
+                        Linking.openURL(`tel:${raw}`).catch(() => { });
                       }}
                       style={styles.contactRow}
                     >
@@ -225,7 +243,7 @@ export function JobDetailScreen() {
                         let url = String(job.link || "").trim();
                         if (!url) return;
                         if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
-                        Linking.openURL(url).catch(() => {});
+                        Linking.openURL(url).catch(() => { });
                       }}
                       style={styles.contactRow}
                     >
@@ -260,8 +278,27 @@ export function JobDetailScreen() {
               </Text>
             </View>
           ) : null}
+
+          {/* Rate Employer Button */}
+          {user?.role === "seeker" && job.createdBy ? (
+            <View style={{ marginTop: 24 }}>
+              <Pressable onPress={() => setRateModalOpen(true)} style={styles.rateBtn}>
+                <Ionicons name="star" size={20} color="#fff" />
+                <Text style={styles.rateBtnText}>İşəgötürəni qiymətləndir</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
         </Card>
       </ScrollView>
+
+      <RateUserModal
+        visible={rateModalOpen}
+        onClose={() => setRateModalOpen(false)}
+        targetId={job.createdBy}
+        jobId={job.id}
+        onSuccess={() => toast.show("Qiymətləndirmə üçün təşəkkürlər!", "success")}
+      />
     </SafeScreen>
   );
 }
@@ -364,4 +401,14 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     fontSize: 12,
   },
+  rateBtn: {
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: Colors.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  rateBtnText: { color: "#fff", fontWeight: "900", fontSize: 16 },
 });

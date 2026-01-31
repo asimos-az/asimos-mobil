@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Switch, Text, View, Modal, FlatList, TouchableOpacity } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
@@ -9,6 +9,7 @@ import { SafeScreen } from "../../components/SafeScreen";
 import { Card } from "../../components/Card";
 import { Colors } from "../../theme/colors";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 import { MapPicker } from "../../components/MapPicker";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { registerForPushNotificationsAsync } from "../../utils/pushNotifications";
@@ -46,6 +47,19 @@ export function SeekerProfileScreen() {
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [notifLoading, setNotifLoading] = useState(false);
 
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundLoading, setSoundLoading] = useState(false);
+  const [soundName, setSoundName] = useState("default");
+  const [soundPickerOpen, setSoundPickerOpen] = useState(false);
+
+  const SOUND_OPTIONS = [
+    { id: "default", label: "Defolt" },
+    { id: "note", label: "Note" },
+    { id: "aurora", label: "Aurora" },
+    { id: "bamboo", label: "Bamboo" },
+    { id: "chord", label: "Chord" },
+  ];
+
   const [statsLoading, setStatsLoading] = useState(false);
   const [stats, setStats] = useState({ totalNotifs: 0, unread: 0, hasLoc: 0 });
 
@@ -74,7 +88,7 @@ export function SeekerProfileScreen() {
         const token = await registerForPushNotificationsAsync();
         if (!alive) return;
         if (token) {
-          await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => {});
+          await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => { });
           const prev = await AsyncStorage.getItem(TOKEN_KEY).catch(() => null);
           if (prev !== token) {
             try {
@@ -82,7 +96,7 @@ export function SeekerProfileScreen() {
             } catch {
               // ignore
             }
-            await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => {});
+            await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => { });
           }
           setNotifEnabled(true);
           return;
@@ -90,6 +104,18 @@ export function SeekerProfileScreen() {
       }
 
       if (alive) setNotifEnabled(false);
+
+      // Load sound setting
+      const soundVal = await AsyncStorage.getItem("ASIMOS_NOTIF_SOUND_ENABLED").catch(() => null);
+      if (alive && soundVal !== null) {
+        setSoundEnabled(soundVal === "1");
+      }
+
+      // Load sound name
+      const nameVal = await AsyncStorage.getItem("ASIMOS_NOTIF_SOUND_NAME").catch(() => null);
+      if (alive && nameVal) {
+        setSoundName(nameVal);
+      }
     })();
 
     return () => {
@@ -131,14 +157,16 @@ export function SeekerProfileScreen() {
     };
   }, [navigation, user?.location?.lat, user?.location?.lng]);
 
+  const toast = useToast();
+
   async function onPickedLocation(loc) {
     if (locLoading) return;
     setLocLoading(true);
     try {
       await updateLocation(loc);
-      Alert.alert("OK", "Lokasiya yeniləndi");
+      toast.show("Lokasiya yeniləndi", "success");
     } catch (e) {
-      Alert.alert("Xəta", e.message || "Lokasiya yenilənmədi");
+      toast.show(e.message || "Lokasiya yenilənmədi", "error");
     } finally {
       setLocLoading(false);
     }
@@ -151,7 +179,7 @@ export function SeekerProfileScreen() {
       if (next) {
         const token = await registerForPushNotificationsAsync();
         if (!token) {
-          Alert.alert("İcazə lazımdır", "Bildirişləri aktiv etmək üçün telefonda icazə ver.");
+          toast.show("Bildirişləri aktiv etmək üçün telefonda icazə ver.", "error");
           setNotifEnabled(false);
           await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V1", "0");
           return;
@@ -159,18 +187,37 @@ export function SeekerProfileScreen() {
         await api.setPushToken(token);
         setNotifEnabled(true);
         await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V1", "1");
-        Alert.alert("OK", "Bildirişlər aktiv edildi");
+        toast.show("Bildirişlər aktiv edildi", "success");
       } else {
-        await api.clearPushToken().catch(() => {});
+        await api.clearPushToken().catch(() => { });
         setNotifEnabled(false);
         await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V1", "0");
-        Alert.alert("OK", "Bildirişlər söndürüldü");
+        toast.show("Bildirişlər söndürüldü", "success");
       }
     } catch (e) {
-      Alert.alert("Xəta", e.message || "Dəyişiklik alınmadı");
+      toast.show(e.message || "Dəyişiklik alınmadı", "error");
     } finally {
       setNotifLoading(false);
     }
+  }
+
+  async function toggleSound(val) {
+    if (soundLoading) return;
+    setSoundLoading(true);
+    try {
+      setSoundEnabled(val);
+      await AsyncStorage.setItem("ASIMOS_NOTIF_SOUND_ENABLED", val ? "1" : "0");
+    } catch {
+      // ignore
+    } finally {
+      setSoundLoading(false);
+    }
+  }
+
+  async function selectSound(item) {
+    setSoundName(item.id);
+    setSoundPickerOpen(false);
+    await AsyncStorage.setItem("ASIMOS_NOTIF_SOUND_NAME", item.id).catch(() => { });
   }
 
   return (
@@ -182,6 +229,34 @@ export function SeekerProfileScreen() {
         onClose={() => setMapOpen(false)}
         onPicked={onPickedLocation}
       />
+
+      <Modal visible={soundPickerOpen} transparent animationType="fade" onRequestClose={() => setSoundPickerOpen(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setSoundPickerOpen(false)}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Səs tonu seçin</Text>
+            <FlatList
+              data={SOUND_OPTIONS}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[styles.soundItem, soundName === item.id && styles.soundItemActive]}
+                  onPress={() => selectSound(item)}
+                >
+                  <Text style={[styles.soundText, soundName === item.id && styles.soundTextActive]}>
+                    {item.label}
+                  </Text>
+                  {soundName === item.id && (
+                    <Ionicons name="checkmark" size={20} color={Colors.primary} />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity style={styles.modalClose} onPress={() => setSoundPickerOpen(false)}>
+              <Text style={styles.modalCloseText}>Bağla</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
 
       <View style={styles.header}>
         <View style={styles.headerRow}>
@@ -277,6 +352,53 @@ export function SeekerProfileScreen() {
 
             <Switch value={notifEnabled} onValueChange={toggleNotifications} disabled={notifLoading} />
           </View>
+
+          <View style={{ height: 16 }} />
+
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleLeft}>
+              <View style={styles.toggleIcon}>
+                <Ionicons
+                  name={soundEnabled ? "volume-high-outline" : "volume-mute-outline"}
+                  size={18}
+                  color={Colors.primary}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.toggleTitle}>Bildiriş səsləri</Text>
+                <Text style={styles.toggleSub}>Proqram daxilində səsli bildirişlər</Text>
+              </View>
+            </View>
+
+            <Switch
+              value={soundEnabled}
+              onValueChange={toggleSound}
+              disabled={soundLoading}
+            />
+          </View>
+
+          {soundEnabled && (
+            <>
+              <View style={{ height: 12 }} />
+              <Pressable
+                style={({ pressed }) => [styles.toggleRow, pressed && { opacity: 0.7 }]}
+                onPress={() => setSoundPickerOpen(true)}
+              >
+                <View style={styles.toggleLeft}>
+                  <View style={styles.toggleIcon}>
+                    <Ionicons name="musical-notes-outline" size={18} color={Colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.toggleTitle}>Səs tonu</Text>
+                    <Text style={styles.toggleSub}>
+                      {SOUND_OPTIONS.find((s) => s.id === soundName)?.label || "Defolt"}
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.muted} />
+              </Pressable>
+            </>
+          )}
 
           <View style={{ height: 14 }} />
 
@@ -422,4 +544,33 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   quickBtnText: { flex: 1, fontWeight: "900", color: Colors.text },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContent: {
+    width: "100%",
+    maxWidth: 340,
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 20,
+  },
+  modalTitle: { fontSize: 18, fontWeight: "900", color: Colors.text, marginBottom: 16, textAlign: "center" },
+  soundItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  soundItemActive: { backgroundColor: Colors.primarySoft + "30", marginHorizontal: -20, paddingHorizontal: 20 },
+  soundText: { fontSize: 16, fontWeight: "700", color: Colors.text },
+  soundTextActive: { color: Colors.primary, fontWeight: "900" },
+  modalClose: { marginTop: 16, alignItems: "center", padding: 10 },
+  modalCloseText: { fontWeight: "900", color: Colors.muted },
 });

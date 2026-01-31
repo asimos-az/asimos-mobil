@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 import { api } from "../../api/client";
 import { Card } from "../../components/Card";
 import { Input } from "../../components/Input";
@@ -100,30 +101,32 @@ export function EmployerCreateJobScreen({ navigation }) {
     return `Bu elan ${durationDays} gün üçün aktiv olacaq və ${d.toLocaleDateString("az-AZ")} tarixində avtomatik silinəcək.`;
   }, [jobType, durationDays]);
 
+  const toast = useToast();
+
   async function submit() {
     try {
       setLoading(true);
 
       if (!title || !description) {
-        Alert.alert("Xəta", "Elanın adı və təsvir vacibdir.");
+        toast.show("Elanın adı və təsvir vacibdir.", "error");
         return;
       }
       if (!jobType) {
-        Alert.alert("Xəta", "İş növünü seç (Daimi / Müvəqqəti).");
+        toast.show("İş növünü seç (Daimi / Müvəqqəti).", "error");
         return;
       }
       if (jobType === "temporary") {
         if (!durationDays || durationDays < 1 || durationDays > 365) {
-          Alert.alert("Xəta", "Müvəqqəti iş üçün gün sayını seç (1/3/10 və ya digər).");
+          toast.show("Müvəqqəti iş üçün gün sayını seç (1/3/10 və ya digər).", "error");
           return;
         }
       }
       if (!location) {
-        Alert.alert("Xəta", "Lokasiya seç.");
+        toast.show("Lokasiya seç.", "error");
         return;
       }
 
-      await api.createJob({
+      const res = await api.createJob({
         title,
         wage,
         category,
@@ -145,10 +148,14 @@ export function EmployerCreateJobScreen({ navigation }) {
         location,
       });
 
-      Alert.alert("OK", "Elan yaradıldı.");
+      if (res?.job?.status === 'pending') {
+        alert("Elanınız yoxlanışdadır. Admin təsdiq etdikdən sonra elanlar siyahısında görünəcək.");
+      } else {
+        toast.show("Elan yaradıldı.", "success");
+      }
       navigation.goBack();
     } catch (e) {
-      Alert.alert("Xəta", e.message);
+      toast.show(e.message, "error");
     } finally {
       setLoading(false);
     }

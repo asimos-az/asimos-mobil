@@ -148,4 +148,7 @@ export const api = {
   getUnreadNotificationsCount: () => request("/me/notifications/unread-count"),
   markNotificationRead: (id) => request(`/me/notifications/${encodeURIComponent(String(id))}/read`, { method: "PATCH" }),
   markAllNotificationsRead: () => request("/me/notifications/read-all", { method: "POST" }),
+
+  // Ratings
+  rateUser: (payload) => request("/ratings", { method: "POST", body: payload }),
 };
