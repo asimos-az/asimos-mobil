@@ -29,56 +29,94 @@ export function MapPreview({ userLocation, jobLocation, height = 220 }) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
   <style>
-    html,body{margin:0;padding:0;height:100%;}
+    html,body{margin:0;padding:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
     #map{height:100%;width:100%}
+    .leaflet-routing-container { 
+      background-color: white; 
+      padding: 5px; 
+      margin: 10px !important;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      font-size: 12px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
   <script>
-    const map = L.map('map', { zoomControl: true }).setView([${Number(centerLat)}, ${Number(centerLng)}], 13);
+    const map = L.map('map', { zoomControl: false }).setView([${Number(centerLat)}, ${Number(centerLng)}], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-
-    const bounds = [];
-
-    const userIcon = L.divIcon({
-      className: 'user-dot',
-      html: '<div style="width:14px;height:14px;border-radius:999px;background:#1d4ed8;border:3px solid #fff;box-shadow:0 6px 18px rgba(0,0,0,0.18)"></div>',
-      iconSize: [14, 14],
-      iconAnchor: [7, 7]
-    });
-
-    const jobIcon = L.divIcon({
-      className: 'job-pin',
-      html: '<div style="width:18px;height:18px;border-radius:999px;background:#16a34a;border:3px solid #fff;box-shadow:0 6px 18px rgba(0,0,0,0.18)"></div>',
-      iconSize: [18, 18],
-      iconAnchor: [9, 9]
-    });
 
     const uLat = ${uLatJs};
     const uLng = ${uLngJs};
     const jLat = ${jLatJs};
     const jLng = ${jLngJs};
 
+    // Icons
+    const userIcon = L.divIcon({
+      className: 'user-dot',
+      html: '<div style="width:14px;height:14px;border-radius:999px;background:#1d4ed8;border:2px solid #fff;box-shadow:0 0 10px rgba(0,0,0,0.2)"></div>',
+      iconSize: [14, 14],
+      iconAnchor: [7, 7]
+    });
+    const jobIcon = L.divIcon({
+      className: 'job-pin',
+      html: '<div style="width:18px;height:18px;border-radius:999px;background:#16a34a;border:2px solid #fff;box-shadow:0 0 10px rgba(0,0,0,0.2)"></div>',
+      iconSize: [18, 18],
+      iconAnchor: [9, 9]
+    });
+
     if (jLat !== null && jLng !== null) {
-      const m = L.marker([jLat, jLng], { icon: jobIcon }).addTo(map);
-      m.bindPopup('Elanın lokasiyası');
-      bounds.push([jLat, jLng]);
+      L.marker([jLat, jLng], { icon: jobIcon }).addTo(map).bindPopup('İş').openPopup();
     }
-
     if (uLat !== null && uLng !== null) {
-      const m2 = L.marker([uLat, uLng], { icon: userIcon }).addTo(map);
-      m2.bindPopup('Sənin lokasiyan');
-      bounds.push([uLat, uLng]);
+      L.marker([uLat, uLng], { icon: userIcon }).addTo(map).bindPopup('Sən');
     }
 
-    if (bounds.length >= 2) {
-      map.fitBounds(bounds, { padding: [30, 30] });
-    } else if (bounds.length === 1) {
-      map.setView(bounds[0], 14);
+    if (uLat !== null && uLng !== null && jLat !== null && jLng !== null) {
+      // Draw Route (Car profile is default OSRM)
+      L.Routing.control({
+        waypoints: [
+          L.latLng(uLat, uLng),
+          L.latLng(jLat, jLng)
+        ],
+        lineOptions: {
+          styles: [{color: '#3b82f6', opacity: 0.7, weight: 5}]
+        },
+        createMarker: function() { return null; }, // Hide default markers, we added ours
+        show: false, // Don't show the itinerary table
+        addWaypoints: false,
+        draggableWaypoints: false,
+        fitSelectedRoutes: true,
+        showAlternatives: false,
+        formatter: new L.Routing.Formatter({
+          language: 'az', // Try to localize if supported or defaults to en
+          units: 'metric'
+        })
+      }).on('routesfound', function(e) {
+        const routes = e.routes;
+        const summary = routes[0].summary;
+        // summary.totalDistance (m)
+        // summary.totalTime (s)
+        
+        // Add a custom info box
+        const distKm = (summary.totalDistance / 1000).toFixed(1);
+        const timeMin = Math.round(summary.totalTime / 60);
+        
+        const infoDiv = document.createElement('div');
+        infoDiv.innerHTML = '<div style="background:white;padding:8px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.2);position:absolute;bottom:20px;left:20px;z-index:999;">' +
+                            '<b>🚗 Avtomobil:</b> ' + distKm + ' km • ' + timeMin + ' dəq' +
+                            '</div>';
+        document.body.appendChild(infoDiv);
+      }).addTo(map);
+    } else if (jLat !== null && jLng !== null) {
+       map.setView([jLat, jLng], 14);
     }
   </script>
 </body>

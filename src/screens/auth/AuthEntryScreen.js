@@ -30,7 +30,8 @@ export function AuthEntryScreen() {
   const [companyName, setCompanyName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [phone, setPhone] = useState("+994");
 
   async function submit() {
     if (loading) return;
@@ -58,8 +59,12 @@ export function AuthEntryScreen() {
       }
 
       // REGISTER
-      if (!fullName || !email || !password || !phone) {
+      if (!fullName || !email || !password || !confirmPassword || !phone) {
         Alert.alert("Xəta", "Zəhmət olmasa bütün xanaları doldur.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        Alert.alert("Xəta", "Şifrələr eyni deyil.");
         return;
       }
       if (role === ROLE.SATICI && !companyName) {
@@ -216,6 +221,14 @@ export function AuthEntryScreen() {
                   label="Şifrə"
                   value={password}
                   onChangeText={setPassword}
+                  placeholder="••••••••"
+                  secureTextEntry
+                />
+
+                <Input
+                  label="Şifrənin təkrarı"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
                   placeholder="••••••••"
                   secureTextEntry
                 />

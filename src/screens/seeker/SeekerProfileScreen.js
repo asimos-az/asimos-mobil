@@ -78,31 +78,33 @@ export function SeekerProfileScreen() {
       const TOKEN_KEY = "ASIMOS_EXPO_PUSH_TOKEN_V2";
 
       const enabled = await AsyncStorage.getItem(ENABLED_KEY).catch(() => null);
-      if (enabled === "0") {
-        if (alive) setNotifEnabled(false);
-        return;
-      }
 
+      // 1. Check OS Permission
       const perm = await Notifications.getPermissionsAsync().catch(() => ({ status: "undetermined" }));
+
+      // If OS permission is granted
       if (perm?.status === "granted") {
-        const token = await registerForPushNotificationsAsync();
-        if (!alive) return;
-        if (token) {
-          await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => { });
-          const prev = await AsyncStorage.getItem(TOKEN_KEY).catch(() => null);
-          if (prev !== token) {
-            try {
-              await api.setPushToken(token);
-            } catch {
-              // ignore
+        // If user hasn't explicitly disabled it in app (enabled !== "0"), show as ON
+        if (enabled !== "0") {
+          const token = await registerForPushNotificationsAsync();
+          if (!alive) return;
+
+          if (token) {
+            // Sync state
+            await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => { });
+            // Ensure token is on server
+            const prev = await AsyncStorage.getItem(TOKEN_KEY).catch(() => null);
+            if (prev !== token) {
+              await api.setPushToken(token).catch(() => { });
+              await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => { });
             }
-            await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => { });
+            setNotifEnabled(true);
+            return;
           }
-          setNotifEnabled(true);
-          return;
         }
       }
 
+      // Otherwise off
       if (alive) setNotifEnabled(false);
 
       // Load sound setting
