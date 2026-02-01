@@ -1,9 +1,8 @@
 import React from "react";
-import { Platform } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import { StyleSheet } from "react-native";
 import { Colors } from "../theme/colors";
 import { SeekerJobsListScreen } from "../screens/seeker/SeekerJobsListScreen";
 import { SeekerDailyJobsScreen } from "../screens/seeker/SeekerDailyJobsScreen";
@@ -37,11 +36,13 @@ export function SeekerTabs() {
         component={SeekerJobsListScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <Ionicons
-              name={focused ? "search" : "search-outline"}
-              size={24}
-              color={focused ? Colors.primary : Colors.muted}
-            />
+            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+              <Ionicons
+                name={focused ? "search" : "search-outline"}
+                size={22}
+                color={focused ? "#fff" : Colors.muted}
+              />
+            </View>
           ),
         }}
       />
@@ -51,11 +52,13 @@ export function SeekerTabs() {
         component={SeekerDailyJobsScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <Ionicons
-              name={focused ? "calendar" : "calendar-outline"}
-              size={24}
-              color={focused ? Colors.primary : Colors.muted}
-            />
+            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+              <Ionicons
+                name={focused ? "calendar" : "calendar-outline"}
+                size={22}
+                color={focused ? "#fff" : Colors.muted}
+              />
+            </View>
           ),
         }}
       />
@@ -65,11 +68,13 @@ export function SeekerTabs() {
         component={SeekerMapScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <Ionicons
-              name={focused ? "map" : "map-outline"}
-              size={24}
-              color={focused ? Colors.primary : Colors.muted}
-            />
+            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+              <Ionicons
+                name={focused ? "map" : "map-outline"}
+                size={22}
+                color={focused ? "#fff" : Colors.muted}
+              />
+            </View>
           ),
         }}
       />
@@ -88,11 +93,13 @@ export function SeekerTabs() {
         })}
         options={{
           tabBarIcon: ({ focused }) => (
-            <Ionicons
-              name={focused ? "person" : "person-outline"}
-              size={24}
-              color={focused ? Colors.primary : Colors.muted}
-            />
+            <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
+              <Ionicons
+                name={focused ? "person" : "person-outline"}
+                size={22}
+                color={focused ? "#fff" : Colors.muted}
+              />
+            </View>
           ),
         }}
       />
@@ -103,23 +110,36 @@ export function SeekerTabs() {
 const styles = StyleSheet.create({
   tabBar: {
     position: "absolute",
-    left: 16,
-    right: 16,
-    height: 62,
-    paddingTop: 10,
-    paddingBottom: 10,
-    borderRadius: 22,
-    backgroundColor: Colors.card,
+    left: 20,
+    right: 20,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#fff",
     borderTopWidth: 0,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    // Android shadow
+    paddingBottom: 0, // Override default safe area padding often added by generic styles
+    // Shadow
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
     elevation: 10,
-    // iOS shadow
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconWrapActive: {
+    backgroundColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+    transform: [{ scale: 1.05 }],
   },
 });

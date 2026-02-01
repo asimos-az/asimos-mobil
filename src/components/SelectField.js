@@ -53,11 +53,11 @@ export function SelectField({
         <Ionicons name="chevron-down" size={18} color={Colors.muted} />
       </Pressable>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <View style={styles.overlay}>
           <Pressable style={styles.backdrop} onPress={() => setOpen(false)} />
-          <View style={[styles.sheet, { paddingBottom: 12 + insets.bottom }]}
-          >
+          <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+            <View style={styles.dragHandle} />
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>{label || "Seç"}</Text>
               <Pressable onPress={() => setOpen(false)} style={styles.iconBtn}>
@@ -108,36 +108,51 @@ const styles = StyleSheet.create({
   value: { color: Colors.text, fontWeight: "800", flex: 1 },
   placeholder: { color: "#94A3B8", fontWeight: "800" },
 
-  overlay: { flex: 1, justifyContent: "center", padding: 16 },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.35)" },
+  overlay: { flex: 1, justifyContent: "flex-end" },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.4)" },
   sheet: {
     backgroundColor: Colors.bg,
-    borderRadius: 18,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     borderWidth: 1,
     borderColor: Colors.border,
-    padding: 12,
+    padding: 16,
+    paddingTop: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
   },
-  sheetHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
-  sheetTitle: { fontSize: 16, fontWeight: "900", color: Colors.text },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: "center",
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  sheetHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  sheetTitle: { fontSize: 18, fontWeight: "900", color: Colors.text },
   iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: Colors.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
   option: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 12,
     borderRadius: 14,
+    marginBottom: 4,
   },
   optionActive: { backgroundColor: Colors.primarySoft },
-  optionText: { color: Colors.text, fontWeight: "900" },
-  optionTextActive: { color: Colors.primary },
+  optionText: { color: Colors.text, fontWeight: "700", fontSize: 16 },
+  optionTextActive: { color: Colors.primary, fontWeight: "900" },
 });

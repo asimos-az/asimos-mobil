@@ -289,9 +289,10 @@ export function EmployerCreateJobScreen({ navigation }) {
           <Input
             label="VOEN"
             value={voen}
-            onChangeText={setVoen}
+            onChangeText={(t) => setVoen(t.replace(/[^0-9]/g, "").slice(0, 13))}
             placeholder="Məs: 123456789"
             keyboardType="numeric"
+            maxLength={13}
           />
 
           <Input

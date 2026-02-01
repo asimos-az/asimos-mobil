@@ -126,6 +126,9 @@ export const api = {
   resendOtp: ({ email }) => request("/auth/resend-otp", { method: "POST", body: { email } }),
   refresh: (refreshToken) => request("/auth/refresh", { method: "POST", body: { refreshToken } }),
 
+  forgotPassword: (email) => request("/auth/forgot-password", { method: "POST", body: { email } }),
+  resetPassword: (payload) => request("/auth/reset-password", { method: "POST", body: payload }),
+
   // Location
   updateMyLocation: (location) => request("/me/location", { method: "PATCH", body: { location } }),
   setPushToken: (expoPushToken) => request("/me/push-token", { method: "POST", body: { expoPushToken } }),
@@ -151,4 +154,9 @@ export const api = {
 
   // Ratings
   rateUser: (payload) => request("/ratings", { method: "POST", body: payload }),
+
+  // Job Alerts
+  listMyAlerts: () => request("/me/alerts"),
+  createAlert: (payload) => request("/me/alerts", { method: "POST", body: payload }),
+  deleteAlert: (id) => request(`/me/alerts/${encodeURIComponent(String(id))}`, { method: "DELETE" }),
 };

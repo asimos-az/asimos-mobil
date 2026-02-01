@@ -4,7 +4,7 @@ import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../api/client";
-import { Card } from "../../components/Card";
+import { EmployerJobCard } from "../../components/EmployerJobCard";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 
@@ -137,134 +137,12 @@ export function EmployerJobsScreen() {
             <Text style={styles.empty}>Hələ elan yoxdur. Aşağıdakı “+” ilə yeni elan yarat.</Text>
           }
           renderItem={({ item }) => (
-            <Pressable onPress={() => navigation.navigate("JobDetail", { job: item })}>
-              <Card style={{ marginBottom: 14, padding: 0, overflow: "hidden" }}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.headerLeft}>
-                    <View
-                      style={[
-                        styles.statusDot,
-                        {
-                          backgroundColor:
-                            statusLabel[String(item?.status || "open").toLowerCase()]?.dot ||
-                            statusLabel.open.dot,
-                        },
-                      ]}
-                    />
-                    <Text style={styles.jobTitle} numberOfLines={1}>
-                      {item.title}
-                    </Text>
-                  </View>
-
-                  <View style={styles.headerRight}>
-                    {item.isDaily ? (
-                      <View style={styles.pill}>
-                        <Ionicons name="calendar-outline" size={14} color={Colors.primary} />
-                        <Text style={styles.pillText}>Gündəlik</Text>
-                      </View>
-                    ) : null}
-
-                    <Pressable
-                      onPress={() => toggleJob(item)}
-                      style={[
-                        styles.actionBtn,
-                        String(item?.status || "open").toLowerCase() === "closed"
-                          ? styles.actionBtnReopen
-                          : styles.actionBtnClose,
-                      ]}
-                      hitSlop={10}
-                      accessibilityRole="button"
-                      accessibilityLabel="Elanı bağla / aç"
-                    >
-                      {String(item?.status || "open").toLowerCase() === "closed" ? (
-                        <>
-                          <Ionicons name="refresh" size={16} color="#0E7A37" />
-                          <Text style={[styles.actionText, { color: "#0E7A37" }]}>Aç</Text>
-                        </>
-                      ) : (
-                        <>
-                          <Ionicons name="lock-closed-outline" size={16} color="#B91C1C" />
-                          <Text style={[styles.actionText, { color: "#B91C1C" }]}>Bağla</Text>
-                        </>
-                      )}
-                    </Pressable>
-                  </View>
-                </View>
-
-                <View style={styles.cardBody}>
-                  <View style={styles.metaRow}>
-                    {item.category ? (
-                      <View style={[styles.chip, styles.chipCategory]}>
-                        <Ionicons name="pricetag-outline" size={14} color={Colors.primary} />
-                        <Text style={[styles.chipText, { color: Colors.primary }]} numberOfLines={1}>
-                          {item.category}
-                        </Text>
-                      </View>
-                    ) : null}
-
-                    <View
-                      style={[
-                        styles.chip,
-                        {
-                          backgroundColor:
-                            statusLabel[String(item?.status || "open").toLowerCase()]?.chipBg ||
-                            statusLabel.open.chipBg,
-                          borderColor:
-                            statusLabel[String(item?.status || "open").toLowerCase()]?.chipBg ||
-                            statusLabel.open.chipBg,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          {
-                            color:
-                              statusLabel[String(item?.status || "open").toLowerCase()]?.chipText ||
-                              statusLabel.open.chipText,
-                          },
-                        ]}
-                      >
-                        {statusLabel[String(item?.status || "open").toLowerCase()]?.text || statusLabel.open.text}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.infoRow}>
-                    <View style={styles.infoItem}>
-                      <Ionicons name="cash-outline" size={16} color={Colors.muted} />
-                      <Text style={styles.infoText} numberOfLines={1}>
-                        {item.wage || "—"}
-                      </Text>
-                    </View>
-
-                    {typeof item.notifyRadiusM === "number" ? (
-                      <View style={styles.infoItem}>
-                        <Ionicons name="radio-outline" size={16} color={Colors.muted} />
-                        <Text style={styles.infoText} numberOfLines={1}>
-                          {item.notifyRadiusM} m
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-
-                  {item.description ? (
-                    <Text style={styles.jobDesc} numberOfLines={3}>
-                      {item.description}
-                    </Text>
-                  ) : null}
-
-                  {item.location?.address ? (
-                    <View style={[styles.infoItem, { marginTop: 10 }]}>
-                      <Ionicons name="location-outline" size={16} color={Colors.muted} />
-                      <Text style={[styles.infoText, { flex: 1 }]} numberOfLines={2}>
-                        {item.location.address}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              </Card>
-            </Pressable>
+            <EmployerJobCard
+              job={item}
+              onPress={() => navigation.navigate("JobDetail", { job: item })}
+              onToggleStatus={toggleJob}
+              loading={loading}
+            />
           )}
         />
       </View>

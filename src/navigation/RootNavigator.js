@@ -18,6 +18,9 @@ import { api } from "../api/client";
 import { LocationAutoScreen } from "../screens/shared/LocationAutoScreen";
 import { DeviceEventEmitter } from "react-native";
 import { SeekerNotificationsScreen } from "../screens/seeker/SeekerNotificationsScreen";
+import JobAlertsScreen from "../screens/seeker/JobAlertsScreen";
+import CreateJobAlertScreen from "../screens/seeker/CreateJobAlertScreen";
+import { ForgotPasswordScreen } from "../screens/auth/ForgotPasswordScreen";
 import { navigationRef } from "./navigationRef";
 
 const Stack = createNativeStackNavigator();
@@ -29,12 +32,12 @@ export function RootNavigator() {
   const isAuthed = !!user;
   const role = user?.role;
 
-  const needsSeekerLocation =
-    isAuthed && role === "seeker" &&
+  const needsLocation =
+    isAuthed &&
     !(user?.location && typeof user.location.lat === "number" && typeof user.location.lng === "number");
 
   // NOTE: Location permission and auto-detect flow is handled via LocationAutoScreen
-  // (shown for seekers until location is saved).
+  // (shown for all users until location is saved).
 
   // Push notifications
   // 1) First login -> show OS permission prompt once and sync switch state.
@@ -45,16 +48,16 @@ export function RootNavigator() {
     (async () => {
       if (!isAuthed || !user?.id) return;
 
-      const ASKED_KEY = "ASIMOS_NOTIF_ASKED_V1";
-      const ENABLED_KEY = "ASIMOS_NOTIF_ENABLED_V1";
-      const TOKEN_KEY = "ASIMOS_EXPO_PUSH_TOKEN_V1";
+      const ASKED_KEY = "ASIMOS_NOTIF_ASKED_V2";
+      const ENABLED_KEY = "ASIMOS_NOTIF_ENABLED_V2";
+      const TOKEN_KEY = "ASIMOS_EXPO_PUSH_TOKEN_V2";
 
       const asked = await AsyncStorage.getItem(ASKED_KEY).catch(() => null);
       const enabled = await AsyncStorage.getItem(ENABLED_KEY).catch(() => null);
 
       // If user manually disabled notifications, do nothing.
       if (enabled === "0") {
-        await AsyncStorage.setItem(ASKED_KEY, "1").catch(() => {});
+        await AsyncStorage.setItem(ASKED_KEY, "1").catch(() => { });
         return;
       }
 
@@ -64,13 +67,13 @@ export function RootNavigator() {
       if (perm?.status === "granted") {
         const token = await registerForPushNotificationsAsync();
         if (!mounted) return;
-        await AsyncStorage.setItem(ASKED_KEY, "1").catch(() => {});
+        await AsyncStorage.setItem(ASKED_KEY, "1").catch(() => { });
         if (token) {
-          await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => {});
+          await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => { });
           const prev = await AsyncStorage.getItem(TOKEN_KEY).catch(() => null);
           if (prev !== token) {
-            try { await api.setPushToken(token); } catch {}
-            await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => {});
+            try { await api.setPushToken(token); } catch { }
+            await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => { });
           }
         }
         return;
@@ -80,14 +83,14 @@ export function RootNavigator() {
       if (asked !== "1") {
         const token = await registerForPushNotificationsAsync();
         if (!mounted) return;
-        await AsyncStorage.setItem(ASKED_KEY, "1").catch(() => {});
+        await AsyncStorage.setItem(ASKED_KEY, "1").catch(() => { });
         if (token) {
-          await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => {});
-          await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => {});
-          try { await api.setPushToken(token); } catch {}
+          await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => { });
+          await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => { });
+          try { await api.setPushToken(token); } catch { }
         } else {
           // User denied -> keep switch OFF (but can be turned ON manually later)
-          await AsyncStorage.setItem(ENABLED_KEY, "0").catch(() => {});
+          await AsyncStorage.setItem(ENABLED_KEY, "0").catch(() => { });
         }
       }
     })();
@@ -127,23 +130,23 @@ export function RootNavigator() {
     })();
 
     return () => {
-      try { sub?.remove(); } catch {}
+      try { sub?.remove(); } catch { }
     };
   }, [role]);
 
   // When a push notification arrives while the app is running, notify screens to refresh
   useEffect(() => {
     const sub = Notifications.addNotificationReceivedListener(() => {
-      try { DeviceEventEmitter.emit("asimos:pushReceived"); } catch {}
+      try { DeviceEventEmitter.emit("asimos:pushReceived"); } catch { }
     });
     return () => {
-      try { sub?.remove(); } catch {}
+      try { sub?.remove(); } catch { }
     };
   }, []);
 
   // While auth state is loading, show splash
   if (booting) {
-    return <LaunchSplashScreen onDone={() => {}} minMs={1200} />;
+    return <LaunchSplashScreen onDone={() => { }} minMs={1200} />;
   }
 
   // After boot, show splash once briefly
@@ -170,10 +173,19 @@ export function RootNavigator() {
               component={VerifyOtpScreen}
               options={{ presentation: "modal" }}
             />
+            <Stack.Screen
+              name="ForgotPassword"
+              component={ForgotPasswordScreen}
+              options={{ presentation: "modal" }} // or card, modal feels ok for this
+            />
           </>
         ) : role === "employer" ? (
           <>
-            <Stack.Screen name="EmployerTabs" component={EmployerTabs} />
+            {needsLocation ? (
+              <Stack.Screen name="LocationAuto" component={LocationAutoScreen} />
+            ) : (
+              <Stack.Screen name="EmployerTabs" component={EmployerTabs} />
+            )}
             <Stack.Screen name="EmployerCreateJob" component={EmployerCreateJobScreen} />
             <Stack.Screen name="EmployerNotifications" component={EmployerNotificationsScreen} />
             <Stack.Screen name="EmployerMap" component={EmployerMapScreen} />
@@ -181,13 +193,15 @@ export function RootNavigator() {
           </>
         ) : (
           <>
-            {needsSeekerLocation ? (
+            {needsLocation ? (
               <Stack.Screen name="LocationAuto" component={LocationAutoScreen} />
             ) : (
               <Stack.Screen name="SeekerTabs" component={SeekerTabs} />
             )}
             <Stack.Screen name="JobDetail" component={JobDetailScreen} />
             <Stack.Screen name="SeekerNotifications" component={SeekerNotificationsScreen} />
+            <Stack.Screen name="JobAlerts" component={JobAlertsScreen} options={{ title: "İş Bildirişləri", headerShown: true }} />
+            <Stack.Screen name="CreateJobAlert" component={CreateJobAlertScreen} options={{ title: "Bildiriş Yarat", headerShown: true }} />
           </>
         )}
       </Stack.Navigator>

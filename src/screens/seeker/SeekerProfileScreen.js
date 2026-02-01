@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, StyleSheet, Switch, Text, View, Modal, FlatList, TouchableOpacity } from "react-native";
+import { Alert, Pressable, StyleSheet, Switch, Text, View, Modal, FlatList, TouchableOpacity, ScrollView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
@@ -74,8 +74,8 @@ export function SeekerProfileScreen() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const ENABLED_KEY = "ASIMOS_NOTIF_ENABLED_V1";
-      const TOKEN_KEY = "ASIMOS_EXPO_PUSH_TOKEN_V1";
+      const ENABLED_KEY = "ASIMOS_NOTIF_ENABLED_V2";
+      const TOKEN_KEY = "ASIMOS_EXPO_PUSH_TOKEN_V2";
 
       const enabled = await AsyncStorage.getItem(ENABLED_KEY).catch(() => null);
       if (enabled === "0") {
@@ -181,17 +181,17 @@ export function SeekerProfileScreen() {
         if (!token) {
           toast.show("Bildirişləri aktiv etmək üçün telefonda icazə ver.", "error");
           setNotifEnabled(false);
-          await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V1", "0");
+          await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V2", "0");
           return;
         }
         await api.setPushToken(token);
         setNotifEnabled(true);
-        await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V1", "1");
+        await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V2", "1");
         toast.show("Bildirişlər aktiv edildi", "success");
       } else {
         await api.clearPushToken().catch(() => { });
         setNotifEnabled(false);
-        await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V1", "0");
+        await AsyncStorage.setItem("ASIMOS_NOTIF_ENABLED_V2", "0");
         toast.show("Bildirişlər söndürüldü", "success");
       }
     } catch (e) {
@@ -278,145 +278,162 @@ export function SeekerProfileScreen() {
       </View>
 
       <View style={styles.body}>
-        <Card>
-          <View style={styles.infoRow}>
-            <Ionicons name="mail-outline" size={18} color={Colors.muted} />
-            <Text style={styles.infoText}>{user?.email || "—"}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Ionicons name="call-outline" size={18} color={Colors.muted} />
-            <Text style={styles.infoText}>{user?.phone || "—"}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Ionicons name="location-outline" size={18} color={Colors.muted} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.infoText} numberOfLines={2}>
-                {user?.location?.address || "Lokasiya seçilməyib"}
-              </Text>
-              {!!user?.location?.lat && !!user?.location?.lng && (
-                <Text style={styles.locSub} numberOfLines={1}>
-                  {Number(user.location.lat).toFixed(5)}, {Number(user.location.lng).toFixed(5)}
-                </Text>
-              )}
-            </View>
-            <Pressable
-              onPress={() => setMapOpen(true)}
-              style={({ pressed }) => [styles.locPill, pressed && { opacity: 0.85 }]}
-            >
-              <Ionicons name="map-outline" size={16} color={Colors.primary} />
-              <Text style={styles.locPillText}>Xəritə</Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.statsHeader}>
-            <Text style={styles.statsTitle}>Statistika</Text>
-            {statsLoading ? <Text style={styles.statsHint}>Yüklənir…</Text> : <Text style={styles.statsHint}>Bu hesab üzrə</Text>}
-          </View>
-
-          <View style={styles.statsGrid}>
-            <View style={[styles.statBox, styles.statBoxPrimary]}>
-              <Ionicons name="notifications-outline" size={18} color={Colors.primary} />
-              <Text style={styles.statValue}>{stats.totalNotifs}</Text>
-              <Text style={styles.statLabel}>Bildirişlər</Text>
-            </View>
-
-            <View style={[styles.statBox, styles.statBoxSuccess]}>
-              <Ionicons name="mail-unread-outline" size={18} color={Colors.success} />
-              <Text style={styles.statValue}>{stats.unread}</Text>
-              <Text style={styles.statLabel}>Oxunmamış</Text>
-            </View>
-
-            <View style={[styles.statBox, styles.statBoxMuted]}>
-              <Ionicons name="location-outline" size={18} color={Colors.muted} />
-              <Text style={styles.statValue}>{stats.hasLoc ? "✓" : "—"}</Text>
-              <Text style={styles.statLabel}>Lokasiya</Text>
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleLeft}>
-              <View style={styles.toggleIcon}>
-                <Ionicons name={notifEnabled ? "notifications-outline" : "notifications-off-outline"} size={18} color={Colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.toggleTitle}>Bildirişlər</Text>
-                <Text style={styles.toggleSub}>Yeni vakansiyalar və yeniliklər</Text>
-              </View>
-            </View>
-
-            <Switch value={notifEnabled} onValueChange={toggleNotifications} disabled={notifLoading} />
-          </View>
-
-          <View style={{ height: 16 }} />
-
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleLeft}>
-              <View style={styles.toggleIcon}>
-                <Ionicons
-                  name={soundEnabled ? "volume-high-outline" : "volume-mute-outline"}
-                  size={18}
-                  color={Colors.primary}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.toggleTitle}>Bildiriş səsləri</Text>
-                <Text style={styles.toggleSub}>Proqram daxilində səsli bildirişlər</Text>
-              </View>
-            </View>
-
-            <Switch
-              value={soundEnabled}
-              onValueChange={toggleSound}
-              disabled={soundLoading}
-            />
-          </View>
-
-          {soundEnabled && (
-            <>
-              <View style={{ height: 12 }} />
-              <Pressable
-                style={({ pressed }) => [styles.toggleRow, pressed && { opacity: 0.7 }]}
-                onPress={() => setSoundPickerOpen(true)}
-              >
-                <View style={styles.toggleLeft}>
-                  <View style={styles.toggleIcon}>
-                    <Ionicons name="musical-notes-outline" size={18} color={Colors.primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.toggleTitle}>Səs tonu</Text>
-                    <Text style={styles.toggleSub}>
-                      {SOUND_OPTIONS.find((s) => s.id === soundName)?.label || "Defolt"}
-                    </Text>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.muted} />
-              </Pressable>
-            </>
-          )}
-
-          <View style={{ height: 14 }} />
-
-          <PrimaryButton title="Lokasiyanı yenilə" loading={locLoading} onPress={() => setMapOpen(true)} />
-          <View style={{ height: 10 }} />
-          <PrimaryButton variant="secondary" title="Çıxış" onPress={signOut} />
-        </Card>
-
-        <View style={{ height: 18 }} />
-
-        <Pressable
-          onPress={() => navigation.navigate("SeekerNotifications")}
-          style={({ pressed }) => [styles.quickBtn, pressed && { opacity: 0.9 }]}
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         >
-          <Ionicons name="notifications-outline" size={18} color={Colors.primary} />
-          <Text style={styles.quickBtnText}>Bildirişlərə bax</Text>
-          <Ionicons name="chevron-forward" size={18} color={Colors.muted} />
-        </Pressable>
+          <Card>
+            <View style={styles.infoRow}>
+              <Ionicons name="mail-outline" size={18} color={Colors.muted} />
+              <Text style={styles.infoText}>{user?.email || "—"}</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Ionicons name="call-outline" size={18} color={Colors.muted} />
+              <Text style={styles.infoText}>{user?.phone || "—"}</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Ionicons name="location-outline" size={18} color={Colors.muted} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.infoText} numberOfLines={2}>
+                  {user?.location?.address || "Lokasiya seçilməyib"}
+                </Text>
+                {!!user?.location?.lat && !!user?.location?.lng && (
+                  <Text style={styles.locSub} numberOfLines={1}>
+                    {Number(user.location.lat).toFixed(5)}, {Number(user.location.lng).toFixed(5)}
+                  </Text>
+                )}
+              </View>
+              <Pressable
+                onPress={() => setMapOpen(true)}
+                style={({ pressed }) => [styles.locPill, pressed && { opacity: 0.85 }]}
+              >
+                <Ionicons name="map-outline" size={16} color={Colors.primary} />
+                <Text style={styles.locPillText}>Xəritə</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.statsHeader}>
+              <Text style={styles.statsTitle}>Statistika</Text>
+              {statsLoading ? <Text style={styles.statsHint}>Yüklənir…</Text> : <Text style={styles.statsHint}>Bu hesab üzrə</Text>}
+            </View>
+
+            <View style={styles.statsGrid}>
+              <View style={[styles.statBox, styles.statBoxPrimary]}>
+                <Ionicons name="notifications-outline" size={18} color={Colors.primary} />
+                <Text style={styles.statValue}>{stats.totalNotifs}</Text>
+                <Text style={styles.statLabel}>Bildirişlər</Text>
+              </View>
+
+              <View style={[styles.statBox, styles.statBoxSuccess]}>
+                <Ionicons name="mail-unread-outline" size={18} color={Colors.success} />
+                <Text style={styles.statValue}>{stats.unread}</Text>
+                <Text style={styles.statLabel}>Oxunmamış</Text>
+              </View>
+
+              <View style={[styles.statBox, styles.statBoxMuted]}>
+                <Ionicons name="location-outline" size={18} color={Colors.muted} />
+                <Text style={styles.statValue}>{stats.hasLoc ? "✓" : "—"}</Text>
+                <Text style={styles.statLabel}>Lokasiya</Text>
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleLeft}>
+                <View style={styles.toggleIcon}>
+                  <Ionicons name={notifEnabled ? "notifications-outline" : "notifications-off-outline"} size={18} color={Colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.toggleTitle}>Bildirişlər</Text>
+                  <Text style={styles.toggleSub}>Yeni vakansiyalar və yeniliklər</Text>
+                </View>
+              </View>
+
+              <Switch value={notifEnabled} onValueChange={toggleNotifications} disabled={notifLoading} />
+            </View>
+
+            <View style={{ height: 16 }} />
+
+            <View style={styles.toggleRow}>
+              <View style={styles.toggleLeft}>
+                <View style={styles.toggleIcon}>
+                  <Ionicons
+                    name={soundEnabled ? "volume-high-outline" : "volume-mute-outline"}
+                    size={18}
+                    color={Colors.primary}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.toggleTitle}>Bildiriş səsləri</Text>
+                  <Text style={styles.toggleSub}>Proqram daxilində səsli bildirişlər</Text>
+                </View>
+              </View>
+
+              <Switch
+                value={soundEnabled}
+                onValueChange={toggleSound}
+                disabled={soundLoading}
+              />
+            </View>
+
+            {soundEnabled && (
+              <>
+                <View style={{ height: 12 }} />
+                <Pressable
+                  style={({ pressed }) => [styles.toggleRow, pressed && { opacity: 0.7 }]}
+                  onPress={() => setSoundPickerOpen(true)}
+                >
+                  <View style={styles.toggleLeft}>
+                    <View style={styles.toggleIcon}>
+                      <Ionicons name="musical-notes-outline" size={18} color={Colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.toggleTitle}>Səs tonu</Text>
+                      <Text style={styles.toggleSub}>
+                        {SOUND_OPTIONS.find((s) => s.id === soundName)?.label || "Defolt"}
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={Colors.muted} />
+                </Pressable>
+              </>
+            )}
+
+            <View style={{ height: 14 }} />
+
+            <PrimaryButton title="Lokasiyanı yenilə" loading={locLoading} onPress={() => setMapOpen(true)} />
+            <View style={{ height: 10 }} />
+            <PrimaryButton variant="secondary" title="Çıxış" onPress={signOut} />
+          </Card>
+
+          <View style={{ height: 18 }} />
+
+          <Pressable
+            onPress={() => navigation.navigate("SeekerNotifications")}
+            style={({ pressed }) => [styles.quickBtn, pressed && { opacity: 0.9 }]}
+          >
+            <Ionicons name="notifications-outline" size={18} color={Colors.primary} />
+            <Text style={styles.quickBtnText}>Bildirişlərə bax</Text>
+            <Ionicons name="chevron-forward" size={18} color={Colors.muted} />
+          </Pressable>
+
+          <View style={{ height: 10 }} />
+
+          <Pressable
+            onPress={() => navigation.navigate("JobAlerts")}
+            style={({ pressed }) => [styles.quickBtn, pressed && { opacity: 0.9 }]}
+          >
+            <Ionicons name="flash-outline" size={18} color={Colors.primary} />
+            <Text style={styles.quickBtnText}>İş Bildirişləri (Job Alerts)</Text>
+            <Ionicons name="chevron-forward" size={18} color={Colors.muted} />
+          </Pressable>
+        </ScrollView>
       </View>
     </SafeScreen>
   );
@@ -476,7 +493,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  body: { flex: 1, padding: 16 },
+  body: { flex: 1 },
 
   infoRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
   infoText: { color: Colors.text, fontWeight: "800", flex: 1 },

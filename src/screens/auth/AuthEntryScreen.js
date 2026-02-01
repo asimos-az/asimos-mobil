@@ -1,16 +1,15 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { Alert, Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, ScrollView, StyleSheet, Text, View, Pressable, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { BackgroundDecor } from "../../components/BackgroundDecor";
-import { Card } from "../../components/Card";
 import { Input } from "../../components/Input";
 import { PrimaryButton } from "../../components/PrimaryButton";
-import { SegmentedControl } from "../../components/SegmentedControl";
 import { Colors } from "../../theme/colors";
 import { useAuth } from "../../context/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "../../api/client";
+import { Ionicons } from "@expo/vector-icons";
 
 const MODE = { LOGIN: "login", REGISTER: "register" };
 const ROLE = { ALICI: "seeker", SATICI: "employer" };
@@ -33,35 +32,26 @@ export function AuthEntryScreen() {
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
 
-  const modeOptions = useMemo(() => ([
-    { label: "Daxil ol", value: MODE.LOGIN },
-    { label: "Qeydiyyat", value: MODE.REGISTER },
-  ]), []);
-
-  const roleOptions = useMemo(() => ([
-    { label: "İş axtaran", value: ROLE.ALICI },
-    { label: "İşçi axtaran", value: ROLE.SATICI },
-  ]), []);
-
   async function submit() {
     if (loading) return;
 
     setLoading(true);
     try {
-      // UI-də seçilən rolu yadda saxla (backend role qaytarmasa da düzgün panelə düşmək üçün)
-      await AsyncStorage.setItem(ROLE_HINT_KEY, role).catch(() => {});
+      // Store role hint mostly for register flows
+      await AsyncStorage.setItem(ROLE_HINT_KEY, role).catch(() => { });
 
       if (mode === MODE.LOGIN) {
         if (!email || !password) {
           Alert.alert("Xəta", "Email və şifrə daxil edin.");
           return;
         }
+        // roleHint passed as 'role' state but backend usually relies on email lookup
         await signIn({ email, password, roleHint: role });
-        // Close modal and return to the previous screen (e.g., JobDetail)
+
         if (nav.canGoBack()) nav.goBack();
         if (redirect?.screen) {
           requestAnimationFrame(() => {
-            try { nav.navigate(redirect.screen, redirect.params || {}); } catch {}
+            try { nav.navigate(redirect.screen, redirect.params || {}); } catch { }
           });
         }
         return;
@@ -87,7 +77,6 @@ export function AuthEntryScreen() {
       });
 
       if (res?.needsOtp) {
-        // OTP kod emailə göndərilir və user kodu daxil edib qeydiyyatı tamamlayır.
         nav.navigate("VerifyOtp", {
           email,
           password,
@@ -105,145 +94,251 @@ export function AuthEntryScreen() {
         if (nav.canGoBack()) nav.goBack();
         if (redirect?.screen) {
           requestAnimationFrame(() => {
-            try { nav.navigate(redirect.screen, redirect.params || {}); } catch {}
+            try { nav.navigate(redirect.screen, redirect.params || {}); } catch { }
           });
         }
       }
     } catch (e) {
-      const apiInfo = typeof __DEV__ !== "undefined" && __DEV__ ? `
-
-API: ${API_BASE_URL}` : "";
+      const apiInfo = typeof __DEV__ !== "undefined" && __DEV__ ? `\n\nAPI: ${API_BASE_URL}` : "";
       Alert.alert("Xəta", (e?.message || "Bir xəta oldu") + apiInfo);
     } finally {
       setLoading(false);
     }
   }
 
+  function toggleMode() {
+    setMode(mode === MODE.LOGIN ? MODE.REGISTER : MODE.LOGIN);
+  }
+
   return (
     <SafeScreen>
-      <View style={styles.screen}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.screen}
+      >
         <BackgroundDecor />
-        {/* Logo is used as brand mark instead of a handwritten watermark */}
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          contentInsetAdjustmentBehavior="always"
           showsVerticalScrollIndicator={false}
         >
-        <View style={styles.center}>
-          <Image
-            source={require("../../../assets/logo.jpeg")}
-            style={styles.logo}
-            resizeMode="contain"
-            accessibilityLabel="Asimos logo"
-          />
+          <View style={styles.header}>
+            <View style={{ width: "100%", alignItems: "flex-start", marginBottom: 10 }}>
+              {nav.canGoBack() ? (
+                <Pressable onPress={() => nav.goBack()} style={{ padding: 8, marginLeft: -8 }}>
+                  <Ionicons name="arrow-back" size={24} color={Colors.text} />
+                </Pressable>
+              ) : (
+                <Pressable onPress={() => {
+                  // If we can't go back, maybe we should just go to the main screen?
+                  // Or just do nothing if this is the only screen.
+                  // But usually we can go back if we came from somewhere.
+                  // If this is the initial screen, maybe we want a "Skip" button to enter Guest mode?
+                  // Assuming Guest mode is handled by navigating to 'Main' or similar.
+                  // But let's just assume goBack works or we offer a "Hələlik keç" button that tries to go Home.
+                  nav.navigate("SeekerTabs"); // Try navigating to main tabs
+                }} style={{ padding: 8, marginLeft: -8 }}>
+                  <Text style={{ color: Colors.muted, fontWeight: "700" }}>Hələlik keç</Text>
+                </Pressable>
+              )}
+            </View>
 
-          <Card style={styles.card}>
-          <SegmentedControl
-            options={modeOptions}
-            value={mode}
-            onChange={setMode}
-            style={{ marginBottom: 12 }}
-          />
+            <Image
+              source={require("../../../assets/logo.jpeg")}
+              style={styles.logo}
+              resizeMode="contain"
+              accessibilityLabel="Asimos logo"
+            />
+            <Text style={styles.title}>
+              {mode === MODE.LOGIN ? "Xoş gəldiniz!" : "Qeydiyyat"}
+            </Text>
+            <Text style={styles.subtitle}>
+              {mode === MODE.LOGIN
+                ? "Davam etmək üçün hesabınıza daxil olun."
+                : "Yeni hesab yaradaraq imkanlardan yararlanın."}
+            </Text>
+          </View>
 
-          <Text style={styles.sectionTitle}>Tip seç</Text>
-          <SegmentedControl
-            options={roleOptions}
-            value={role}
-            onChange={setRole}
-            style={{ marginBottom: 14 }}
-          />
+          <View style={styles.formCard}>
 
-          {mode === MODE.REGISTER ? (
-            <>
-              <Input
-                label="Ad Soyad"
-                value={fullName}
-                onChangeText={setFullName}
-                placeholder="Məs: Xəyyam Məmmədli"
-                autoCapitalize="words"
-              />
+            {/* Role Selector - Only for Register */}
+            {mode === MODE.REGISTER && (
+              <View style={styles.roleContainer}>
+                <Pressable
+                  style={[styles.roleBtn, role === ROLE.ALICI && styles.roleBtnActive]}
+                  onPress={() => setRole(ROLE.ALICI)}
+                >
+                  <Ionicons name="person" size={20} color={role === ROLE.ALICI ? Colors.primary : Colors.muted} />
+                  <Text style={[styles.roleText, role === ROLE.ALICI && styles.roleTextActive]}>İş axtaran</Text>
+                </Pressable>
 
-              {role === ROLE.SATICI ? (
+                <Pressable
+                  style={[styles.roleBtn, role === ROLE.SATICI && styles.roleBtnActive]}
+                  onPress={() => setRole(ROLE.SATICI)}
+                >
+                  <Ionicons name="briefcase" size={20} color={role === ROLE.SATICI ? Colors.primary : Colors.muted} />
+                  <Text style={[styles.roleText, role === ROLE.SATICI && styles.roleTextActive]}>İşçi axtaran</Text>
+                </Pressable>
+              </View>
+            )}
+
+            {mode === MODE.REGISTER ? (
+              <>
                 <Input
-                  label="Şirkət adı"
-                  value={companyName}
-                  onChangeText={setCompanyName}
-                  placeholder="Məs: Asimos LLC"
+                  label="Ad Soyad"
+                  value={fullName}
+                  onChangeText={setFullName}
+                  placeholder="Məs: Xəyyam Məmmədli"
                   autoCapitalize="words"
                 />
-              ) : null}
 
-              <Input
-                label="Email"
-                value={email}
-                onChangeText={setEmail}
-                placeholder="mail@example.com"
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
+                {role === ROLE.SATICI ? (
+                  <Input
+                    label="Şirkət adı"
+                    value={companyName}
+                    onChangeText={setCompanyName}
+                    placeholder="Məs: Asimos LLC"
+                    autoCapitalize="words"
+                  />
+                ) : null}
 
-              <Input
-                label="Şifrə"
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                secureTextEntry
-              />
+                <Input
+                  label="Email"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="mail@example.com"
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
 
-              <Input
-                label="Mobil nömrə"
-                value={phone}
-                onChangeText={setPhone}
-                placeholder="+994..."
-                keyboardType="phone-pad"
-              />
+                <Input
+                  label="Şifrə"
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="••••••••"
+                  secureTextEntry
+                />
 
-              <Text style={styles.help}>
-                Qeydiyyatdan sonra lokasiya telefon permission-u ilə avtomatik alınacaq.
+                <Input
+                  label="Mobil nömrə"
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="+994..."
+                  keyboardType="phone-pad"
+                />
+
+                <Text style={styles.help}>
+                  Qeydiyyatdan sonra lokasiya avtomatik təyin ediləcək.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Input
+                  label="Email"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="mail@example.com"
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
+                <Input
+                  label="Şifrə"
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="••••••••"
+                  secureTextEntry
+                />
+                <Pressable style={{ alignSelf: 'flex-end', marginTop: 8 }} onPress={() => nav.navigate("ForgotPassword")}>
+                  <Text style={{ color: Colors.primary, fontWeight: '700', fontSize: 13 }}>Şifrəni unutmusan?</Text>
+                </Pressable>
+              </>
+            )}
+
+            <View style={{ height: 24 }} />
+            <PrimaryButton
+              title={mode === MODE.LOGIN ? "Daxil ol" : "Qeydiyyat"}
+              loading={loading}
+              onPress={submit}
+            />
+
+          </View>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              {mode === MODE.LOGIN ? "Hesabınız yoxdur?" : "Artıq hesabınız var?"}
+            </Text>
+            <Pressable onPress={toggleMode}>
+              <Text style={styles.footerLink}>
+                {mode === MODE.LOGIN ? "Qeydiyyatdan keçin" : "Daxil olun"}
               </Text>
-            </>
-          ) : (
-            <>
-              <Input
-                label="Email"
-                value={email}
-                onChangeText={setEmail}
-                placeholder="mail@example.com"
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-              <Input
-                label="Şifrə"
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                secureTextEntry
-              />
-            </>
-          )}
+            </Pressable>
+          </View>
 
-          <View style={{ height: 14 }} />
-          <PrimaryButton title={mode === MODE.LOGIN ? "Daxil ol" : "Qeydiyyat"} loading={loading} onPress={submit} />
-          </Card>
-        </View>
-      </ScrollView>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeScreen>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  // Extra bottom padding so inputs never hide behind keyboard / home indicator
-  scroll: { flexGrow: 1, padding: 16, paddingBottom: 160 },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  scroll: { flexGrow: 1, padding: 20, paddingBottom: 40 },
 
-  logo: { width: 120, height: 120, marginBottom: 8 },
+  header: {
+    alignItems: "center",
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  logo: { width: 100, height: 100, marginBottom: 16, borderRadius: 20 },
+  title: { fontSize: 28, fontWeight: "900", color: Colors.text, marginBottom: 8 },
+  subtitle: { fontSize: 16, color: Colors.muted, textAlign: "center", maxWidth: "80%" },
 
-  card: { marginTop: 14, width: "100%", maxWidth: 440 },
+  formCard: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 4,
+  },
 
-  sectionTitle: { color: Colors.muted, fontWeight: "900", marginBottom: 8 },
-  help: { marginTop: 10, color: Colors.muted, fontWeight: "700", fontSize: 12, lineHeight: 16 },
+  roleContainer: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 20,
+  },
+  roleBtn: {
+    flex: 1,
+    flexDirection: "row", // Side by side icon + text
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    gap: 8,
+    borderRadius: 14,
+    backgroundColor: Colors.bg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  roleBtnActive: {
+    backgroundColor: Colors.primarySoft,
+    borderColor: Colors.primary,
+  },
+  roleText: { fontWeight: "700", color: Colors.muted },
+  roleTextActive: { color: Colors.primary, fontWeight: "900" },
+
+  help: { marginTop: 12, color: Colors.muted, fontWeight: "600", fontSize: 12, lineHeight: 18, textAlign: 'center' },
+
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 30,
+    marginBottom: 20,
+  },
+  footerText: { color: Colors.text, fontWeight: "600", fontSize: 15 },
+  footerLink: { color: Colors.primary, fontWeight: "900", fontSize: 15 },
 });

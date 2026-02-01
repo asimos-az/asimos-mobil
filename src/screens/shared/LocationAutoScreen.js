@@ -53,7 +53,7 @@ export function LocationAutoScreen() {
         <Card>
           <Text style={styles.title}>Lokasiya tapılmadı</Text>
           <Text style={styles.sub}>
-            Elanları yaxın məsafəyə görə filter etmək üçün lokasiya icazəsi və GPS aktiv olmalıdır.
+            Sizə ən uyğun işləri və elanları göstərmək üçün lokasiya icazəsi və GPS aktiv olmalıdır.
           </Text>
 
           <View style={{ height: 14 }} />
@@ -61,7 +61,7 @@ export function LocationAutoScreen() {
           <Pressable
             style={styles.btn}
             onPress={() => {
-              try { Linking.openSettings(); } catch {}
+              try { Linking.openSettings(); } catch { }
             }}
           >
             <Text style={styles.btnText}>Ayarları aç</Text>

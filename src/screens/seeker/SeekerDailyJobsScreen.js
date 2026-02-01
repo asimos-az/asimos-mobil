@@ -7,15 +7,15 @@ import { MapPicker } from "../../components/MapPicker";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
-import { Card } from "../../components/Card";
+import { JobCard } from "../../components/JobCard";
 import { JobsFilterModal } from "../../components/JobsFilterModal";
 import { NotificationBell } from "../../components/NotificationBell";
 
 const RADIUS_PRESETS = [
-  { label: "500m", value: 500 },
+  { label: "Ölkə üzrə", value: 0 },
   { label: "1km", value: 1000 },
-  { label: "1.2km", value: 1200 },
-  { label: "2km", value: 2000 },
+  { label: "5km", value: 5000 },
+  { label: "10km", value: 10000 },
 ];
 
 function extractWageNumber(wageText) {
@@ -37,7 +37,7 @@ export function SeekerDailyJobsScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
 
   const [q, setQ] = useState("");
-  const [radius, setRadius] = useState(1200);
+  const [radius, setRadius] = useState(0);
   const [minWage, setMinWage] = useState("");
   const [maxWage, setMaxWage] = useState("");
   const [selectedCategories, setSelectedCategories] = useState([]);
@@ -52,7 +52,7 @@ export function SeekerDailyJobsScreen() {
     React.useCallback(() => {
       api.getUnreadNotificationsCount()
         .then((r) => setUnread(r?.unread || 0))
-        .catch(() => {});
+        .catch(() => { });
 
       const t = setInterval(() => {
         loadList();
@@ -64,10 +64,17 @@ export function SeekerDailyJobsScreen() {
   // Refresh unread count immediately when a push arrives
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener("asimos:pushReceived", () => {
-      api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => {});
+      api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => { });
       loadList();
     });
     return () => sub?.remove?.();
+  }, []);
+
+  // Guest mode: on first mount, load jobs even if we don't have a saved location yet.
+  useEffect(() => {
+    if (didInit.current) return;
+    didInit.current = true;
+    loadList();
   }, []);
 
   const radiusOptions = useMemo(() => RADIUS_PRESETS.map((x) => ({ label: x.label, value: x.value })), []);
@@ -105,13 +112,15 @@ export function SeekerDailyJobsScreen() {
   async function loadList(locOverride) {
     try {
       const loc = locOverride || baseLocation || user?.location;
-      if (!loc?.lat || !loc?.lng) return;
+      // If radius > 0, we need location. If radius is 0, we are fine without location.
+      if (radius > 0 && (!loc?.lat || !loc?.lng)) return;
+
       setLoading(true);
       const data = await api.listJobsWithSearch({
         q: q?.trim() || "",
-        lat: loc.lat,
-        lng: loc.lng,
-        radius_m: radius,
+        lat: loc?.lat,
+        lng: loc?.lng,
+        radius_m: (radius > 0 && loc?.lat && loc?.lng) ? radius : undefined,
         daily: true,
       });
       setItems(data);
@@ -132,7 +141,7 @@ export function SeekerDailyJobsScreen() {
     loadList(location);
   }, [location?.lat, location?.lng]);
 
-  const hasActiveFilters = !!(q?.trim() || minWage || maxWage || (selectedCategories?.length) || radius !== 1200);
+  const hasActiveFilters = !!(q?.trim() || minWage || maxWage || (selectedCategories?.length) || radius > 0);
 
   function toggleCategory(cat) {
     setSelectedCategories((prev) => {
@@ -144,7 +153,7 @@ export function SeekerDailyJobsScreen() {
 
   function resetFilters() {
     setQ("");
-    setRadius(1200);
+    setRadius(0);
     setMinWage("");
     setMaxWage("");
     setSelectedCategories([]);
@@ -235,18 +244,10 @@ export function SeekerDailyJobsScreen() {
             </Text>
           }
           renderItem={({ item }) => (
-            <Pressable onPress={() => navigation.navigate("JobDetail", { job: item })}>
-              <Card style={{ marginBottom: 12 }}>
-                <View style={styles.row}>
-                  <Text style={styles.jobTitle}>{item.title}</Text>
-                  <Text style={styles.badge}>Gündəlik</Text>
-                </View>
-                {item.category ? <Text style={styles.meta}>Kateqoriya: {item.category}</Text> : null}
-                <Text style={styles.meta}>{item.wage || "—"}</Text>
-                {typeof item.distanceM === "number" ? <Text style={styles.meta}>Məsafə: {item.distanceM} m</Text> : null}
-                <Text style={styles.desc} numberOfLines={2}>{item.description}</Text>
-              </Card>
-            </Pressable>
+            <JobCard
+              job={item}
+              onPress={() => navigation.navigate("JobDetail", { job: item })}
+            />
           )}
         />
       </View>
@@ -259,24 +260,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 12,
-    backgroundColor: Colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    backgroundColor: Colors.bg,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  title: { fontSize: 18, fontWeight: "900", color: Colors.text },
-  sub: { marginTop: 4, color: Colors.muted, fontWeight: "800" },
+  title: { fontSize: 24, fontWeight: "900", color: Colors.text },
+  sub: { marginTop: 4, color: Colors.muted, fontWeight: "600", fontSize: 14 },
+
   iconBtn: {
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: Colors.primarySoft,
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   dot: {
     position: "absolute",
@@ -286,21 +291,10 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 999,
     backgroundColor: "#ff3b30",
-  },
-  body: { flex: 1, padding: 16 },
-  empty: { color: Colors.muted, textAlign: "center", marginTop: 22, fontWeight: "800" },
-
-  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
-  badge: {
-    backgroundColor: Colors.primarySoft,
-    color: Colors.primary,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    fontWeight: "900",
+    borderWidth: 1,
+    borderColor: "#fff",
   },
 
-  jobTitle: { fontSize: 16, fontWeight: "900", color: Colors.text },
-  meta: { marginTop: 6, color: Colors.muted, fontWeight: "800" },
-  desc: { marginTop: 8, color: Colors.text, lineHeight: 20 },
+  body: { flex: 1, paddingHorizontal: 16, paddingTop: 10 },
+  empty: { color: Colors.muted, textAlign: "center", marginTop: 40, fontWeight: "700", fontSize: 15 },
 });

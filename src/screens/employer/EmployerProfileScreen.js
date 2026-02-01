@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, StyleSheet, Text, View, Switch, Pressable, Modal, FlatList, TouchableOpacity } from "react-native";
+import { Alert, StyleSheet, Text, View, Switch, Pressable, Modal, FlatList, TouchableOpacity, ScrollView } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { Card } from "../../components/Card";
@@ -249,7 +249,11 @@ export function EmployerProfileScreen() {
         </View>
       </View>
 
-      <View style={styles.body}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior="always"
+      >
         <Card>
           <View style={styles.infoRow}>
             <Ionicons name="mail-outline" size={18} color={Colors.muted} />
@@ -402,7 +406,7 @@ export function EmployerProfileScreen() {
             variant="danger"
           />
         </Card>
-      </View>
+      </ScrollView>
     </SafeScreen>
   );
 }
@@ -440,7 +444,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  body: { flex: 1, padding: 16 },
+  scroll: { padding: 16, paddingBottom: 160 },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
   infoText: { color: Colors.text, fontWeight: "800", flex: 1 },
   locSub: { marginTop: 2, color: Colors.muted, fontWeight: "700", fontSize: 12 },

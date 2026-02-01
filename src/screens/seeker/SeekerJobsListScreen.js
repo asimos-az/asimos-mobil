@@ -7,15 +7,15 @@ import { MapPicker } from "../../components/MapPicker";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../../context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
-import { Card } from "../../components/Card";
+import { JobCard } from "../../components/JobCard";
 import { JobsFilterModal } from "../../components/JobsFilterModal";
 import { NotificationBell } from "../../components/NotificationBell";
 
 const RADIUS_PRESETS = [
-  { label: "500m", value: 500 },
+  { label: "Ölkə üzrə", value: 0 },
   { label: "1km", value: 1000 },
-  { label: "1.2km", value: 1200 },
-  { label: "2km", value: 2000 },
+  { label: "5km", value: 5000 },
+  { label: "10km", value: 10000 },
 ];
 
 function extractWageNumber(wageText) {
@@ -37,7 +37,7 @@ export function SeekerJobsListScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
 
   const [q, setQ] = useState("");
-  const [radius, setRadius] = useState(1200);
+  const [radius, setRadius] = useState(0);
   const [minWage, setMinWage] = useState("");
   const [maxWage, setMaxWage] = useState("");
   const [selectedCategories, setSelectedCategories] = useState([]);
@@ -50,7 +50,7 @@ export function SeekerJobsListScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => {});
+      api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => { });
 
       // Poll so newly created jobs (by employer/admin) show up even if no manual refresh.
       const t = setInterval(() => {
@@ -63,7 +63,7 @@ export function SeekerJobsListScreen() {
   // Refresh unread count immediately when a push arrives
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener("asimos:pushReceived", () => {
-      api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => {});
+      api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => { });
       // Also refresh the list so new jobs appear without manual reload.
       loadList();
     });
@@ -119,7 +119,7 @@ export function SeekerJobsListScreen() {
         q: q?.trim() || "",
         lat: loc?.lat,
         lng: loc?.lng,
-        radius_m: loc?.lat && loc?.lng ? radius : undefined,
+        radius_m: (radius > 0 && loc?.lat && loc?.lng) ? radius : undefined,
         daily: undefined,
       });
       setItems(data);
@@ -135,13 +135,13 @@ export function SeekerJobsListScreen() {
   }, [user?.location?.lat, user?.location?.lng]);
 
   useEffect(() => {
+    // If we have a location, we can use it to sort by distance (even if radius is 0/infinite)
     if (!location?.lat || !location?.lng) return;
-    // First time + whenever user changes location (e.g. via Profile)
     didInit.current = true;
     loadList(location);
   }, [location?.lat, location?.lng]);
 
-  const hasActiveFilters = !!(q?.trim() || minWage || maxWage || (selectedCategories?.length) || radius !== 1200);
+  const hasActiveFilters = !!(q?.trim() || minWage || maxWage || (selectedCategories?.length) || radius > 0);
 
   function toggleCategory(cat) {
     setSelectedCategories((prev) => {
@@ -153,7 +153,7 @@ export function SeekerJobsListScreen() {
 
   function resetFilters() {
     setQ("");
-    setRadius(1200);
+    setRadius(0);
     setMinWage("");
     setMaxWage("");
     setSelectedCategories([]);
@@ -251,56 +251,10 @@ export function SeekerJobsListScreen() {
             </Text>
           }
           renderItem={({ item }) => (
-            <Pressable onPress={() => navigation.navigate("JobDetail", { job: item })}>
-              <Card style={{ marginBottom: 14, padding: 0, overflow: "hidden" }}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.headerLeft}>
-                    <View style={styles.statusDot} />
-                    <Text style={styles.jobTitle} numberOfLines={1}>
-                      {item.title}
-                    </Text>
-                  </View>
-
-                  {item.isDaily ? (
-                    <View style={styles.pill}>
-                      <Ionicons name="calendar-outline" size={14} color={Colors.primary} />
-                      <Text style={styles.pillText}>Gündəlik</Text>
-                    </View>
-                  ) : null}
-                </View>
-
-                <View style={styles.cardBody}>
-                  <View style={styles.metaRow}>
-                    {item.category ? (
-                      <View style={[styles.chip, styles.chipCategory]}>
-                        <Ionicons name="pricetag-outline" size={14} color={Colors.primary} />
-                        <Text style={[styles.chipText, { color: Colors.primary }]} numberOfLines={1}>
-                          {item.category}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-
-                  <View style={styles.kvRow}>
-                    <View style={styles.kvItem}>
-                      <Ionicons name="cash-outline" size={16} color={Colors.muted} />
-                      <Text style={styles.kvText}>{item.wage || "—"}</Text>
-                    </View>
-
-                    {typeof item.distanceM === "number" ? (
-                      <View style={styles.kvItem}>
-                        <Ionicons name="navigate-outline" size={16} color={Colors.muted} />
-                        <Text style={styles.kvText}>{item.distanceM} m</Text>
-                      </View>
-                    ) : null}
-                  </View>
-
-                  <Text style={styles.desc} numberOfLines={2}>
-                    {item.description}
-                  </Text>
-                </View>
-              </Card>
-            </Pressable>
+            <JobCard
+              job={item}
+              onPress={() => navigation.navigate("JobDetail", { job: item })}
+            />
           )}
         />
       </View>
@@ -313,9 +267,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 12,
-    backgroundColor: Colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    marginTop: -20, // To pull up under the transparent status bar if needed, or just remove
+    backgroundColor: Colors.bg, // Match background
+    // borderBottomWidth: 1,
+    // borderBottomColor: Colors.border,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -326,11 +281,16 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: Colors.primarySoft,
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   unreadBadge: {
     position: "absolute",
@@ -351,57 +311,14 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 999,
     backgroundColor: "#ff3b30",
+    borderWidth: 1,
+    borderColor: "#fff",
   },
 
-  body: { flex: 1, padding: 16 },
+  body: { flex: 1, paddingHorizontal: 16, paddingTop: 10 },
   label: { color: Colors.muted, marginBottom: 6, fontWeight: "900" },
   help: { marginTop: 6, color: Colors.muted, fontSize: 12, fontWeight: "700" },
-  empty: { color: Colors.muted, textAlign: "center", marginTop: 22, fontWeight: "800" },
+  empty: { color: Colors.muted, textAlign: "center", marginTop: 40, fontWeight: "700", fontSize: 15 },
 
   two: { flexDirection: "row", gap: 10 },
-
-  // Card (same style as employer)
-  cardHeader: {
-    padding: 14,
-    paddingBottom: 10,
-    backgroundColor: Colors.primarySoft,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  headerLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
-  statusDot: { width: 10, height: 10, borderRadius: 99, backgroundColor: Colors.primary },
-  jobTitle: { fontSize: 16, fontWeight: "900", color: Colors.text, flex: 1 },
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: Colors.card,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-  },
-  pillText: { fontWeight: "900", color: Colors.primary },
-  cardBody: { padding: 14 },
-  metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-  chipCategory: { backgroundColor: Colors.primarySoft, borderColor: Colors.border },
-  chipText: { fontWeight: "900" },
-  kvRow: { flexDirection: "row", gap: 14, marginTop: 10, flexWrap: "wrap" },
-  kvItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  kvText: { fontWeight: "900", color: Colors.muted },
-  desc: { marginTop: 10, color: Colors.text, lineHeight: 20, fontWeight: "700" },
 });

@@ -164,6 +164,17 @@ export function AuthProvider({ children }) {
 
     resendEmailOtp: async ({ email }) => api.resendOtp({ email }),
 
+    resetPassword: async ({ email, code, password }) => {
+      const res = await api.resetPassword({ email, code, password });
+      if (res?.token && res?.user) {
+        const nextUser = { ...(res.user || {}) };
+        nextUser.role = normalizeRole(nextUser.role) || null;
+        await persist(res.token, res.refreshToken, nextUser);
+        return nextUser;
+      }
+      return null;
+    },
+
     updateLocation: async (location) => {
       const nextUser = { ...(user || {}), location };
       setUser(nextUser);
