@@ -47,7 +47,8 @@ export async function registerForPushNotificationsAsync() {
       projectId ? { projectId } : undefined
     );
     return token?.data || null;
-  } catch {
+  } catch (e) {
+    alert("Push Error: " + e.message);
     return null;
   }
 }

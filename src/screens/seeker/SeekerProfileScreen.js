@@ -84,7 +84,12 @@ export function SeekerProfileScreen() {
 
       // If OS permission is granted
       if (perm?.status === "granted") {
-        // If user hasn't explicitly disabled it in app (enabled !== "0"), show as ON
+        // Optimistically show as ON if not explicitly disabled by user
+        if (enabled !== "0") {
+          setNotifEnabled(true);
+        }
+
+        // Try to sync token in background
         if (enabled !== "0") {
           const token = await registerForPushNotificationsAsync();
           if (!alive) return;
@@ -98,7 +103,6 @@ export function SeekerProfileScreen() {
               await api.setPushToken(token).catch(() => { });
               await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => { });
             }
-            setNotifEnabled(true);
             return;
           }
         }
