@@ -4,7 +4,8 @@ let TOKEN_UPDATE_HANDLER = null;
 
 // Set this in Expo:
 // EXPO_PUBLIC_API_BASE_URL=https://YOUR-SERVICE.onrender.com
-const RAW_API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || "https://asimos-backend.onrender.com").trim();
+const envUrl = (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_BASE_URL) || "https://asimos-backend.onrender.com";
+const RAW_API_BASE_URL = envUrl.trim();
 export const API_BASE_URL = RAW_API_BASE_URL.replace(/\/+$/, "");
 
 
@@ -47,7 +48,9 @@ async function refreshSessionOrThrow() {
 
   if (!res.ok) {
     const msg = data?.error || "Refresh failed";
-    throw new Error(msg);
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
   }
 
   AUTH_TOKEN = data.token || AUTH_TOKEN;
@@ -145,6 +148,7 @@ export const api = {
 
   // Categories (admin-managed)
   listCategories: () => request("/categories"),
+  getContent: (slug) => request(`/content/${encodeURIComponent(slug)}`),
 
   // Notifications
   listMyNotifications: ({ limit = 50, offset = 0 } = {}) => request(`/me/notifications${qs({ limit, offset })}`),

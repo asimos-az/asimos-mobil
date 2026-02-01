@@ -86,13 +86,19 @@ export function AuthProvider({ children }) {
 
             await persist(refreshed.token, refreshed.refreshToken || parsed.refreshToken, nextUser);
           } catch (e) {
-            // If refresh fails (revoked/invalid refresh token), force re-login.
-            try { await AsyncStorage.removeItem(STORAGE_KEY); } catch { }
-            clearAuthToken();
-            if (!cancelled) {
-              setToken(null);
-              setRefreshTokenState(null);
-              setUser(null);
+            // Only force re-login if explicit auth failure
+            if (e.status === 401 || e.status === 403) {
+              try { await AsyncStorage.removeItem(STORAGE_KEY); } catch { }
+              clearAuthToken();
+              if (!cancelled) {
+                setToken(null);
+                setRefreshTokenState(null);
+                setUser(null);
+              }
+            } else {
+              console.log("[Auth] Refresh failed but keeping session (network?):", e.message);
+              // Keep the expired token in memory/storage so we can try again later
+              // or let the next API call fail and trigger logic there.
             }
           }
         }
@@ -211,6 +217,8 @@ export function AuthProvider({ children }) {
       await AsyncStorage.removeItem(ROLE_HINT_KEY).catch(() => { });
       // location permission prompt-un bir dəfəlik flag-i
       await AsyncStorage.removeItem("ASIMOS_LOC_ASKED_V1").catch(() => { });
+      await AsyncStorage.removeItem("ASIMOS_NOTIF_ENABLED_V2").catch(() => { });
+      await AsyncStorage.removeItem("ASIMOS_NOTIF_ASKED_V2").catch(() => { });
 
       // Small timeout to ensure UI stays clean during navigation transition
       setTimeout(() => setIsSigningOut(false), 300);

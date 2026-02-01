@@ -242,7 +242,7 @@ export function AuthEntryScreen() {
                 />
 
                 <Text style={styles.help}>
-                  Qeydiyyatdan sonra lokasiya avtomatik təyin ediləcək.
+                  Qeydiyyatdan keçməklə siz <Text style={styles.link} onPress={() => nav.navigate("Terms", { slug: "terms", title: "Qaydalar" })}>Qaydalar və Şərtlər</Text> ilə razılaşırsınız.
                 </Text>
               </>
             ) : (
@@ -354,4 +354,5 @@ const styles = StyleSheet.create({
   },
   footerText: { color: Colors.text, fontWeight: "600", fontSize: 15 },
   footerLink: { color: Colors.primary, fontWeight: "900", fontSize: 15 },
+  link: { color: Colors.primary, fontWeight: "800", textDecorationLine: "underline" },
 });

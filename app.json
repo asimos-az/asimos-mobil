@@ -39,7 +39,8 @@
     },
     "plugins": [
       "expo-dev-client",
-      "expo-notifications"
+      "expo-notifications",
+      "react-native-webview"
     ],
     "web": {
       "favicon": "./assets/logo.jpeg"

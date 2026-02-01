@@ -435,6 +435,17 @@ export function SeekerProfileScreen() {
             <Text style={styles.quickBtnText}>İş Bildirişləri (Job Alerts)</Text>
             <Ionicons name="chevron-forward" size={18} color={Colors.muted} />
           </Pressable>
+
+          <View style={{ height: 10 }} />
+
+          <Pressable
+            onPress={() => navigation.navigate("Terms", { slug: "terms", title: "Qaydalar" })}
+            style={({ pressed }) => [styles.quickBtn, pressed && { opacity: 0.9 }]}
+          >
+            <Ionicons name="document-text-outline" size={18} color={Colors.primary} />
+            <Text style={styles.quickBtnText}>Qaydalar və Şərtlər</Text>
+            <Ionicons name="chevron-forward" size={18} color={Colors.muted} />
+          </Pressable>
         </ScrollView>
       </View>
     </SafeScreen>

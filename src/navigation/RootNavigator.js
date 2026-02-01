@@ -12,6 +12,7 @@ import { EmployerCreateJobScreen } from "../screens/employer/EmployerCreateJobSc
 import { EmployerNotificationsScreen } from "../screens/employer/EmployerNotificationsScreen";
 import { EmployerMapScreen } from "../screens/employer/EmployerMapScreen";
 import { JobDetailScreen } from "../screens/shared/JobDetailScreen";
+import { TermsScreen } from "../screens/shared/TermsScreen";
 import { LaunchSplashScreen } from "../screens/shared/LaunchSplashScreen";
 import { registerForPushNotificationsAsync } from "../utils/pushNotifications";
 import { api } from "../api/client";
@@ -89,8 +90,8 @@ export function RootNavigator() {
           await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => { });
           try { await api.setPushToken(token); } catch { }
         } else {
-          // User denied -> keep switch OFF (but can be turned ON manually later)
-          await AsyncStorage.setItem(ENABLED_KEY, "0").catch(() => { });
+          // User denied OR token failed -> do nothing.
+          // Don't modify ENABLED_KEY. If permission is denied, Profile screen will see that from OS status.
         }
       }
     })();
@@ -178,6 +179,7 @@ export function RootNavigator() {
               component={ForgotPasswordScreen}
               options={{ presentation: "modal" }} // or card, modal feels ok for this
             />
+            <Stack.Screen name="Terms" component={TermsScreen} options={{ presentation: "card" }} />
           </>
         ) : role === "employer" ? (
           <>
@@ -189,7 +191,9 @@ export function RootNavigator() {
             <Stack.Screen name="EmployerCreateJob" component={EmployerCreateJobScreen} />
             <Stack.Screen name="EmployerNotifications" component={EmployerNotificationsScreen} />
             <Stack.Screen name="EmployerMap" component={EmployerMapScreen} />
+
             <Stack.Screen name="JobDetail" component={JobDetailScreen} />
+            <Stack.Screen name="Terms" component={TermsScreen} />
           </>
         ) : (
           <>
@@ -202,6 +206,7 @@ export function RootNavigator() {
             <Stack.Screen name="SeekerNotifications" component={SeekerNotificationsScreen} />
             <Stack.Screen name="JobAlerts" component={JobAlertsScreen} options={{ title: "İş Bildirişləri", headerShown: true }} />
             <Stack.Screen name="CreateJobAlert" component={CreateJobAlertScreen} options={{ title: "Bildiriş Yarat", headerShown: true }} />
+            <Stack.Screen name="Terms" component={TermsScreen} />
           </>
         )}
       </Stack.Navigator>
