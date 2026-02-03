@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
+import { getDeviceLocationOrNull } from "../../utils/deviceLocation";
 import { Alert, FlatList, Pressable, StyleSheet, Text, View, DeviceEventEmitter } from "react-native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
@@ -70,11 +71,31 @@ export function SeekerJobsListScreen() {
     return () => sub?.remove?.();
   }, []);
 
-  // Guest mode: on first mount, load jobs even if we don't have a saved location yet.
+  // Guest mode / Initial Load: Try to get fresh location to show relevant jobs.
   useEffect(() => {
     if (didInit.current) return;
     didInit.current = true;
-    loadList();
+
+    (async () => {
+      // Start loading immediately with what we have (or null)
+      if (user?.location) {
+        loadList(user.location);
+      } else {
+        // If no user location, try to fetch GPS
+        setLoading(true);
+        try {
+          const fresh = await getDeviceLocationOrNull({ timeoutMs: 4000 });
+          if (fresh) {
+            setBaseLocation(fresh);
+            loadList(fresh);
+          } else {
+            loadList(null);
+          }
+        } catch {
+          loadList(null);
+        }
+      }
+    })();
   }, []);
 
   const radiusOptions = useMemo(() => RADIUS_PRESETS.map((x) => ({ label: x.label, value: x.value })), []);
@@ -190,7 +211,7 @@ export function SeekerJobsListScreen() {
       <MapPicker
         visible={mapOpen}
         initial={location}
-        userLocation={user?.location || null}
+        userLocation={baseLocation || user?.location || null}
         onClose={() => setMapOpen(false)}
         onPicked={async (loc) => {
           setBaseLocation(loc);
@@ -258,6 +279,17 @@ export function SeekerJobsListScreen() {
           )}
         />
       </View>
+
+      {/* Floating Map Button */}
+      <View style={styles.floatBtnWrap}>
+        <Pressable
+          style={styles.floatBtn}
+          onPress={() => navigation.navigate('SeekerMap', { jobs: items, userLocation: baseLocation })}
+        >
+          <Ionicons name="map" size={20} color="#fff" />
+          <Text style={styles.floatBtnText}>Xəritə</Text>
+        </Pressable>
+      </View>
     </SafeScreen>
   );
 }
@@ -321,4 +353,30 @@ const styles = StyleSheet.create({
   empty: { color: Colors.muted, textAlign: "center", marginTop: 40, fontWeight: "700", fontSize: 15 },
 
   two: { flexDirection: "row", gap: 10 },
+
+  floatBtnWrap: {
+    position: 'absolute',
+    bottom: 90,
+    alignSelf: 'center',
+    zIndex: 99
+  },
+  floatBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111827',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 50,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6
+  },
+  floatBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15
+  }
 });

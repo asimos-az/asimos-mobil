@@ -38,17 +38,17 @@ export async function registerForPushNotificationsAsync() {
     }
 
     // On modern Expo SDKs (EAS builds), projectId is required to generate a valid push token.
-    const projectId =
-      Constants?.expoConfig?.extra?.eas?.projectId ||
-      Constants?.easConfig?.projectId ||
-      undefined;
+    const projectId = Constants?.expoConfig?.extra?.eas?.projectId || Constants?.easConfig?.projectId;
+
+    // DEBUG: Remove after fixing
+    // alert(`Perm: ${finalStatus}, PID: ${projectId}`); 
 
     const token = await Notifications.getExpoPushTokenAsync(
       projectId ? { projectId } : undefined
     );
     return token?.data || null;
   } catch (e) {
-    alert("Push Error: " + e.message);
+    console.log("Push Token Error:", e);
     return null;
   }
 }

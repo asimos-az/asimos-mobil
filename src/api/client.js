@@ -26,45 +26,54 @@ export function setTokenUpdateHandler(fn) {
   TOKEN_UPDATE_HANDLER = fn || null;
 }
 
+let refreshPromise = null;
+
 async function refreshSessionOrThrow() {
   if (!REFRESH_TOKEN) throw new Error("No refresh token");
 
-  let res;
-  try {
-    // NOTE: Don't set hop-by-hop headers (e.g. Connection). iOS can reject them.
-    res = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Accept": "application/json" },
-      body: JSON.stringify({ refreshToken: REFRESH_TOKEN }),
-      redirect: "follow",
-      cache: "no-store",
-    });
-  } catch (e) {
-    const msg = e?.message || "Network request failed";
-    throw new Error(`${msg}\n\nURL: ${API_BASE_URL}/auth/refresh`);
+  // Deduplicate inflight refresh requests
+  if (refreshPromise) {
+    return refreshPromise;
   }
 
-  const data = await res.json().catch(() => null);
+  refreshPromise = (async () => {
+    try {
+      // NOTE: Don't set hop-by-hop headers (e.g. Connection). iOS can reject them.
+      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ refreshToken: REFRESH_TOKEN }),
+        redirect: "follow",
+        cache: "no-store",
+      });
 
-  if (!res.ok) {
-    const msg = data?.error || "Refresh failed";
-    const err = new Error(msg);
-    err.status = res.status;
-    throw err;
-  }
+      const data = await res.json().catch(() => null);
 
-  AUTH_TOKEN = data.token || AUTH_TOKEN;
-  REFRESH_TOKEN = data.refreshToken || REFRESH_TOKEN;
+      if (!res.ok) {
+        const msg = data?.error || "Refresh failed";
+        const err = new Error(msg);
+        err.status = res.status;
+        throw err;
+      }
 
-  if (TOKEN_UPDATE_HANDLER) {
-    TOKEN_UPDATE_HANDLER({
-      token: AUTH_TOKEN,
-      refreshToken: REFRESH_TOKEN,
-      user: data.user || null,
-    });
-  }
+      AUTH_TOKEN = data.token || AUTH_TOKEN;
+      REFRESH_TOKEN = data.refreshToken || REFRESH_TOKEN;
 
-  return { token: AUTH_TOKEN, refreshToken: REFRESH_TOKEN, user: data.user || null };
+      if (TOKEN_UPDATE_HANDLER) {
+        TOKEN_UPDATE_HANDLER({
+          token: AUTH_TOKEN,
+          refreshToken: REFRESH_TOKEN,
+          user: data.user || null,
+        });
+      }
+
+      return { token: AUTH_TOKEN, refreshToken: REFRESH_TOKEN, user: data.user || null };
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 }
 
 async function request(path, { method = "GET", body, _retry = false } = {}) {

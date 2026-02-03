@@ -6,6 +6,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
 import { Card } from "../../components/Card";
+import { useAuth } from "../../context/AuthContext";
 import { api } from "../../api/client";
 
 function formatTime(iso) {
@@ -23,17 +24,25 @@ export function SeekerNotificationsScreen() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const { signOut } = useAuth(); // Import signOut
+
   const load = useCallback(async () => {
     try {
       setLoading(true);
       const res = await api.listMyNotifications({ limit: 60, offset: 0 });
       setItems(res?.items || []);
     } catch (e) {
-      Alert.alert("Xəta", e.message || "Bildirişlər yüklənmədi");
+      if (e?.status === 401 || e?.message?.includes("Invalid token") || e?.message?.includes("Refresh failed")) {
+        Alert.alert("Sessiya bitib", "Zəhmət olmasa yenidən daxil olun.", [
+          { text: "Daxil ol", onPress: () => signOut() }
+        ]);
+      } else {
+        Alert.alert("Xəta", e.message || "Bildirişlər yüklənmədi");
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [signOut]);
 
   useFocusEffect(
     useCallback(() => {
@@ -54,7 +63,7 @@ export function SeekerNotificationsScreen() {
   async function openItem(n) {
     try {
       if (!n?.read_at) {
-        api.markNotificationRead(n.id).catch(() => {});
+        api.markNotificationRead(n.id).catch(() => { });
       }
 
       const data = n?.data || {};

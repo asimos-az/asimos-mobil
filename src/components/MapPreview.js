@@ -115,6 +115,11 @@ export function MapPreview({ userLocation, jobLocation, height = 220 }) {
                             '</div>';
         document.body.appendChild(infoDiv);
       }).addTo(map);
+      
+      // Force fit bounds to show both points immediately
+      const bounds = L.latLngBounds([ [uLat, uLng], [jLat, jLng] ]);
+      map.fitBounds(bounds, { padding: [50, 50] });
+
     } else if (jLat !== null && jLng !== null) {
        map.setView([jLat, jLng], 14);
     }

@@ -11,8 +11,10 @@ import { SeekerTabs } from "./SeekerTabs";
 import { EmployerCreateJobScreen } from "../screens/employer/EmployerCreateJobScreen";
 import { EmployerNotificationsScreen } from "../screens/employer/EmployerNotificationsScreen";
 import { EmployerMapScreen } from "../screens/employer/EmployerMapScreen";
+import { SeekerMapScreen } from "../screens/seeker/SeekerMapScreen";
 import { JobDetailScreen } from "../screens/shared/JobDetailScreen";
 import { TermsScreen } from "../screens/shared/TermsScreen";
+import { JobMapScreen } from "../screens/shared/JobMapScreen";
 import { LaunchSplashScreen } from "../screens/shared/LaunchSplashScreen";
 import { registerForPushNotificationsAsync } from "../utils/pushNotifications";
 import { api } from "../api/client";
@@ -158,28 +160,16 @@ export function RootNavigator() {
   return (
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {/* Guest mode: allow browsing jobs without login. */}
+        {/* Guest mode */}
         {!isAuthed ? (
           <>
             <Stack.Screen name="SeekerTabs" component={SeekerTabs} />
             <Stack.Screen name="JobDetail" component={JobDetailScreen} />
-            {/* Auth screens are still reachable (opened when user taps locked contact info) */}
-            <Stack.Screen
-              name="AuthEntry"
-              component={AuthEntryScreen}
-              options={{ presentation: "modal" }}
-            />
-            <Stack.Screen
-              name="VerifyOtp"
-              component={VerifyOtpScreen}
-              options={{ presentation: "modal" }}
-            />
-            <Stack.Screen
-              name="ForgotPassword"
-              component={ForgotPasswordScreen}
-              options={{ presentation: "modal" }} // or card, modal feels ok for this
-            />
+            <Stack.Screen name="AuthEntry" component={AuthEntryScreen} options={{ presentation: "modal" }} />
+            <Stack.Screen name="VerifyOtp" component={VerifyOtpScreen} options={{ presentation: "modal" }} />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ presentation: "modal" }} />
             <Stack.Screen name="Terms" component={TermsScreen} options={{ presentation: "card" }} />
+            <Stack.Screen name="JobMap" component={JobMapScreen} options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
           </>
         ) : role === "employer" ? (
           <>
@@ -194,9 +184,11 @@ export function RootNavigator() {
 
             <Stack.Screen name="JobDetail" component={JobDetailScreen} />
             <Stack.Screen name="Terms" component={TermsScreen} />
+            <Stack.Screen name="JobMap" component={JobMapScreen} options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
           </>
         ) : (
           <>
+            {/* Seeker */}
             {needsLocation ? (
               <Stack.Screen name="LocationAuto" component={LocationAutoScreen} />
             ) : (
@@ -207,6 +199,8 @@ export function RootNavigator() {
             <Stack.Screen name="JobAlerts" component={JobAlertsScreen} options={{ title: "İş Bildirişləri", headerShown: true }} />
             <Stack.Screen name="CreateJobAlert" component={CreateJobAlertScreen} options={{ title: "Bildiriş Yarat", headerShown: true }} />
             <Stack.Screen name="Terms" component={TermsScreen} />
+            <Stack.Screen name="SeekerMap" component={SeekerMapScreen} options={{ presentation: "fullScreenModal", animation: "fade_from_bottom" }} />
+            <Stack.Screen name="JobMap" component={JobMapScreen} options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
           </>
         )}
       </Stack.Navigator>

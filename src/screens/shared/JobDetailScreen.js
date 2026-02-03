@@ -10,6 +10,7 @@ import { useAuth } from "../../context/AuthContext";
 import { api } from "../../api/client";
 import { RateUserModal } from "../../components/RateUserModal";
 import { useToast } from "../../context/ToastContext";
+import { getDeviceLocationOrNull } from "../../utils/deviceLocation";
 
 export function JobDetailScreen() {
   const navigation = useNavigation();
@@ -21,7 +22,16 @@ export function JobDetailScreen() {
   const [job, setJob] = useState(routeJob || null);
   const [saving, setSaving] = useState(false);
   const [rateModalOpen, setRateModalOpen] = useState(false);
+  const [myLoc, setMyLoc] = useState(null);
   const toast = useToast();
+
+  // Try to get fresh location for routing if user doesn't have one
+  useEffect(() => {
+    if (user?.location) return; // Already have it from profile
+    getDeviceLocationOrNull({ timeoutMs: 3000 }).then(loc => {
+      if (loc) setMyLoc(loc);
+    }).catch(() => { });
+  }, [user?.location]);
 
   // Always refresh from server when opened from push or older list item
   useEffect(() => {
@@ -263,9 +273,14 @@ export function JobDetailScreen() {
 
           <View style={{ height: 14 }} />
           <Text style={styles.descTitle}>Xəritə</Text>
-          <Text style={styles.mapHint}>Yaşıl: elanın lokasiyası • Mavi: sənin lokasiyan</Text>
+          <Text style={styles.mapHint}>Yaşıl: elanın lokasiyası • Mavi: sənin lokasiyan • Böyütmək üçün xəritəyə toxun</Text>
           <View style={{ height: 10 }} />
-          <MapPreview userLocation={userLoc} jobLocation={jobLoc} height={240} />
+
+          <Pressable onPress={() => navigation.navigate("JobMap", { job, userLocation: myLoc || userLoc })}>
+            <MapPreview userLocation={myLoc || userLoc} jobLocation={jobLoc} height={240} />
+            {/* Overlay to intercept touches but allow press */}
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'transparent' }} />
+          </Pressable>
 
           <View style={{ height: 14 }} />
           <Text style={styles.descTitle}>Təsvir</Text>

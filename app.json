@@ -22,7 +22,8 @@
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         }
-      }
+      },
+      "bundleIdentifier": "com.asimos.asimos"
     },
     "android": {
       "softwareKeyboardLayoutMode": "resize",
@@ -33,13 +34,22 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "POST_NOTIFICATIONS"
+        "POST_NOTIFICATIONS",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ],
-      "package": "com.asimos.asimos"
+      "package": "com.asimos.asimos",
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       "expo-dev-client",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
+        }
+      ]
     ],
     "web": {
       "favicon": "./assets/logo.jpeg"

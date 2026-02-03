@@ -38,12 +38,23 @@ export function TermsScreen() {
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
           <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; color: ${Colors.text}; margin: 0; line-height: 1.6; }
-            h1, h2, h3 { color: ${Colors.primary}; margin-top: 1.5em; margin-bottom: 0.5em; }
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+              padding: 20px; 
+              color: ${Colors.text}; 
+              margin: 0; 
+              line-height: 1.6;
+              word-wrap: break-word;
+              overflow-wrap: break-word;
+              max-width: 100%;
+              overflow-x: hidden;
+            }
+            img { max-width: 100%; height: auto; }
+            h1, h2, h3 { color: ${Colors.primary}; margin-top: 1.5em; margin-bottom: 0.5em; word-wrap: break-word; }
             p { margin-bottom: 1em; }
             ul, ol { padding-left: 20px; margin-bottom: 1em; }
             li { margin-bottom: 0.5em; }
-            a { color: ${Colors.primary}; text-decoration: none; font-weight: bold; }
+            a { color: ${Colors.primary}; text-decoration: none; font-weight: bold; word-wrap: break-word; }
             strong { font-weight: 800; }
           </style>
         </head>

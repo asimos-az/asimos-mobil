@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getDeviceLocationOrNull } from "../utils/deviceLocation";
 import { api, setAuthToken, setRefreshToken, clearAuthToken, setTokenUpdateHandler } from "../api/client";
 import { navigationRef } from "../navigation/navigationRef";
 
@@ -58,6 +59,7 @@ export function AuthProvider({ children }) {
 
     (async () => {
       try {
+        // 1. Load persisted session
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (!raw) return;
 
@@ -66,7 +68,7 @@ export function AuthProvider({ children }) {
           ? { ...parsed.user, role: normalizeRole(parsed.user?.role) || null }
           : null;
 
-        // Hydrate state immediately so UI can render.
+        // Hydrate state immediately
         if (!cancelled) {
           setToken(parsed.token || null);
           setRefreshTokenState(parsed.refreshToken || null);
@@ -74,6 +76,19 @@ export function AuthProvider({ children }) {
         }
         setAuthToken(parsed.token || null);
         setRefreshToken(parsed.refreshToken || null);
+
+        // 2. Auto-Update Location (LIVE LOCATION)
+        if (parsed.token) {
+          // Fire and forget - don't block
+          getDeviceLocationOrNull({ timeoutMs: 5000 }).then(async (loc) => {
+            if (loc && !cancelled) {
+              // Update local state silently
+              setUser(prev => ({ ...prev, location: loc }));
+              // Sync to backend
+              try { await api.updateMyLocation(loc); } catch { }
+            }
+          });
+        }
 
         // Proactive refresh on app start:
         // If access token is expired, some screens hit the API immediately and show "Invalid token".
@@ -140,6 +155,16 @@ export function AuthProvider({ children }) {
         await AsyncStorage.setItem(ROLE_HINT_KEY, hint).catch(() => { });
       }
       await persist(res.token, res.refreshToken, nextUser);
+
+      // Auto-ask for push
+      setTimeout(() => {
+        import("../utils/pushNotifications").then(({ registerForPushNotificationsAsync }) => {
+          registerForPushNotificationsAsync().then(token => {
+            if (token) api.setPushToken(token).catch(() => { });
+          });
+        });
+      }, 500);
+
       return nextUser;
     },
 
@@ -165,6 +190,16 @@ export function AuthProvider({ children }) {
         if (hint) nextUser.role = hint;
       }
       await persist(res.token, res.refreshToken, nextUser);
+
+      // Auto-ask for push
+      setTimeout(() => {
+        import("../utils/pushNotifications").then(({ registerForPushNotificationsAsync }) => {
+          registerForPushNotificationsAsync().then(token => {
+            if (token) api.setPushToken(token).catch(() => { });
+          });
+        });
+      }, 500);
+
       return nextUser;
     },
 
@@ -176,6 +211,16 @@ export function AuthProvider({ children }) {
         const nextUser = { ...(res.user || {}) };
         nextUser.role = normalizeRole(nextUser.role) || null;
         await persist(res.token, res.refreshToken, nextUser);
+
+        // Auto-ask for push
+        setTimeout(() => {
+          import("../utils/pushNotifications").then(({ registerForPushNotificationsAsync }) => {
+            registerForPushNotificationsAsync().then(token => {
+              if (token) api.setPushToken(token).catch(() => { });
+            });
+          });
+        }, 1000);
+
         return nextUser;
       }
       return null;

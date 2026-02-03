@@ -21,12 +21,13 @@ export function MapPicker({ visible, onClose, onPicked, initial, userLocation })
   const safeTop = Math.max(0, Number(insets?.top || 0));
 
   const html = useMemo(() => {
-    const initLat = Number(initial?.lat ?? 40.4093);
-    const initLng = Number(initial?.lng ?? 49.8671);
-    const initAddress = initial?.address ?? "";
-
     const uLat = (typeof userLocation?.lat === "number") ? Number(userLocation.lat) : null;
     const uLng = (typeof userLocation?.lng === "number") ? Number(userLocation.lng) : null;
+
+    // Default to user location if available, otherwise fallback to hardcoded Baku
+    const initLat = Number(initial?.lat ?? uLat ?? 40.4093);
+    const initLng = Number(initial?.lng ?? uLng ?? 49.8671);
+    const initAddress = initial?.address ?? "";
     const apiBase = String(API_BASE_URL || "").replace(/\/$/, "");
 
     // JSON literals to embed safely

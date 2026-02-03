@@ -77,6 +77,20 @@ export function EmployerCreateJobScreen({ navigation }) {
   }, []);
 
   const [location, setLocation] = useState(user.location || null);
+
+  // Auto-fetch location if missing on mount (so map opens at user's current spot)
+  // Auto-fetch location if missing on mount OR if it's the default "Gunesli" location
+  useEffect(() => {
+    const isDefault = location?.lat && Math.abs(location.lat - 40.4093) < 0.01 && Math.abs(location.lng - 49.8671) < 0.01;
+
+    if (!location || isDefault) {
+      import("../../utils/deviceLocation").then(({ getDeviceLocationOrNull }) => {
+        getDeviceLocationOrNull().then(loc => {
+          if (loc) setLocation(loc);
+        });
+      });
+    }
+  }, []);
   const [notifyRadiusM, setNotifyRadiusM] = useState("500");
   const [mapOpen, setMapOpen] = useState(false);
 
