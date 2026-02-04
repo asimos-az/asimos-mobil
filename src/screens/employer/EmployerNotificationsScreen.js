@@ -11,17 +11,31 @@ import { Card } from "../../components/Card";
 // NOTE: backend-də bildiriş tarixçəsi saxlanılmırsa, bu ekran boş görünəcək.
 // İstəsən, gələcəkdə Supabase-də `notifications` cədvəli əlavə edib buradan API ilə yükləyə bilərik.
 
+import { api } from "../../api/client";
+
 export function EmployerNotificationsScreen() {
   const navigation = useNavigation();
+  const [items, setItems] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
 
-  const items = useMemo(() => {
-    // Placeholder. (No backend history yet.)
-    return [];
+  const loadData = React.useCallback(async () => {
+    try {
+      const res = await api.listMyNotifications({ limit: 50 });
+      setItems(res.items || []);
+    } catch (e) {
+      console.warn("Notifications error:", e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
+  React.useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   function goMap() {
-    // EmployerMap artıq tab içindədir.
-    // Stack-də olduğumuz üçün tab-a keçid edirik.
     navigation.navigate("EmployerMap");
   }
 
@@ -32,8 +46,6 @@ export function EmployerNotificationsScreen() {
           onPress={() => navigation.goBack()}
           style={styles.iconBtn}
           hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Geri"
         >
           <Ionicons name="chevron-back" size={22} color={Colors.text} />
         </Pressable>
@@ -47,8 +59,6 @@ export function EmployerNotificationsScreen() {
           onPress={goMap}
           style={styles.iconBtn}
           hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Xəritə"
         >
           <Ionicons name="map-outline" size={22} color={Colors.primary} />
         </Pressable>
@@ -59,13 +69,23 @@ export function EmployerNotificationsScreen() {
           data={items}
           keyExtractor={(it) => String(it.id)}
           contentContainerStyle={{ paddingBottom: 120 }}
+          refreshing={refreshing}
+          onRefresh={() => {
+            setRefreshing(true);
+            loadData();
+          }}
           ListEmptyComponent={
-            <Text style={styles.empty}>Hələ bildiriş yoxdur.</Text>
+            !loading && <Text style={styles.empty}>Hələ bildiriş yoxdur.</Text>
           }
           renderItem={({ item }) => (
             <Card style={{ marginBottom: 12 }}>
               <Text style={styles.itemTitle}>{item.title}</Text>
               <Text style={styles.itemBody}>{item.body}</Text>
+              {item.created_at && (
+                <Text style={{ marginTop: 8, fontSize: 12, color: Colors.muted }}>
+                  {new Date(item.created_at).toLocaleString("az-AZ")}
+                </Text>
+              )}
             </Card>
           )}
         />

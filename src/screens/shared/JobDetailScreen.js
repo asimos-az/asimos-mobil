@@ -26,12 +26,12 @@ export function JobDetailScreen() {
   const toast = useToast();
 
   // Try to get fresh location for routing if user doesn't have one
+  // Always try to get fresh location for routing/map
   useEffect(() => {
-    if (user?.location) return; // Already have it from profile
-    getDeviceLocationOrNull({ timeoutMs: 3000 }).then(loc => {
+    getDeviceLocationOrNull({ timeoutMs: 5000 }).then(loc => {
       if (loc) setMyLoc(loc);
     }).catch(() => { });
-  }, [user?.location]);
+  }, []);
 
   // Always refresh from server when opened from push or older list item
   useEffect(() => {
