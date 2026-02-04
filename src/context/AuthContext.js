@@ -112,10 +112,20 @@ export function AuthProvider({ children }) {
               }
             } else {
               console.log("[Auth] Refresh failed but keeping session (network?):", e.message);
-              // Keep the expired token in memory/storage so we can try again later
-              // or let the next API call fail and trigger logic there.
             }
           }
+        }
+
+        // 3. Auto-Register Push Token on Boot (CRITICAL FIX)
+        // Ensures that even if token changes (reinstall/update), we sync it.
+        if (parsed.token || parsed.user) {
+          setTimeout(() => {
+            import("../utils/pushNotifications").then(({ registerForPushNotificationsAsync }) => {
+              registerForPushNotificationsAsync().then(token => {
+                if (token) api.setPushToken(token).catch(() => { });
+              });
+            });
+          }, 2000);
         }
       } finally {
         if (!cancelled) setBooting(false);

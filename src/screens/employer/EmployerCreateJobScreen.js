@@ -83,13 +83,15 @@ export function EmployerCreateJobScreen({ navigation }) {
   useEffect(() => {
     const isDefault = location?.lat && Math.abs(location.lat - 40.4093) < 0.01 && Math.abs(location.lng - 49.8671) < 0.01;
 
-    if (!location || isDefault) {
-      import("../../utils/deviceLocation").then(({ getDeviceLocationOrNull }) => {
-        getDeviceLocationOrNull().then(loc => {
-          if (loc) setLocation(loc);
-        });
+    // Always try to get fresh device location on mount to ensure "Current Location" is accurate
+    // This fixes the issue where user sees their old saved location instead of where they are now.
+    import("../../utils/deviceLocation").then(({ getDeviceLocationOrNull }) => {
+      getDeviceLocationOrNull().then(loc => {
+        if (loc) {
+          setLocation(loc);
+        }
       });
-    }
+    });
   }, []);
   const [notifyRadiusM, setNotifyRadiusM] = useState("500");
   const [mapOpen, setMapOpen] = useState(false);
