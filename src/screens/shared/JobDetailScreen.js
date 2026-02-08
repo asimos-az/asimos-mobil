@@ -25,15 +25,12 @@ export function JobDetailScreen() {
   const [myLoc, setMyLoc] = useState(null);
   const toast = useToast();
 
-  // Try to get fresh location for routing if user doesn't have one
-  // Always try to get fresh location for routing/map
   useEffect(() => {
     getDeviceLocationOrNull({ timeoutMs: 5000 }).then(loc => {
       if (loc) setMyLoc(loc);
     }).catch(() => { });
   }, []);
 
-  // Always refresh from server when opened from push or older list item
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -42,7 +39,6 @@ export function JobDetailScreen() {
         const fresh = await api.getJobById(routeJob.id);
         if (alive && fresh) setJob(fresh);
       } catch {
-        // ignore
       }
     })();
     return () => { alive = false; };

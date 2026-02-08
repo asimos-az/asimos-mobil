@@ -7,12 +7,17 @@ import { api } from "../../api/client";
 import { EmployerJobCard } from "../../components/EmployerJobCard";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { SegmentedControl } from "../../components/SegmentedControl";
 
 export function EmployerJobsScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const [tab, setTab] = useState("my"); // "my" | "all"
+  const [allJobs, setAllJobs] = useState([]);
+  const [loadingAll, setLoadingAll] = useState(false);
 
   async function load() {
     try {
@@ -25,6 +30,25 @@ export function EmployerJobsScreen() {
       setLoading(false);
     }
   }
+
+  async function loadAll() {
+    try {
+      setLoadingAll(true);
+      // Fetch all jobs (empty query = all)
+      const data = await api.listJobsWithSearch({ q: "" });
+      setAllJobs(data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingAll(false);
+    }
+  }
+
+  useEffect(() => {
+    if (tab === "all") {
+      loadAll();
+    }
+  }, [tab]);
 
   useEffect(() => {
     const unsub = navigation.addListener("focus", load);
@@ -91,7 +115,6 @@ export function EmployerJobsScreen() {
   }
 
   function goNotifications() {
-    // Tab navigator içindən Root Stack screen-ə çıxmaq üçün parent-ə yönləndir.
     const parent = navigation.getParent?.();
     if (parent) parent.navigate("EmployerNotifications");
     else navigation.navigate("EmployerNotifications");
@@ -127,24 +150,53 @@ export function EmployerJobsScreen() {
       </View>
 
       <View style={styles.body}>
-        <FlatList
-          data={items}
-          keyExtractor={(it) => it.id}
-          refreshing={loading}
-          onRefresh={load}
-          contentContainerStyle={{ paddingBottom: 120 }}
-          ListEmptyComponent={
-            <Text style={styles.empty}>Hələ elan yoxdur. Aşağıdakı “+” ilə yeni elan yarat.</Text>
-          }
-          renderItem={({ item }) => (
-            <EmployerJobCard
-              job={item}
-              onPress={() => navigation.navigate("JobDetail", { job: item })}
-              onToggleStatus={toggleJob}
-              loading={loading}
-            />
-          )}
-        />
+        <View style={{ marginBottom: 16 }}>
+          <SegmentedControl
+            options={[{ label: "Mənim elanlarım", value: "my" }, { label: "Bütün elanlar", value: "all" }]}
+            value={tab}
+            onChange={setTab}
+          />
+        </View>
+
+        {tab === "my" ? (
+          <FlatList
+            data={items}
+            keyExtractor={(it) => it.id}
+            refreshing={loading}
+            onRefresh={load}
+            contentContainerStyle={{ paddingBottom: 120 }}
+            ListEmptyComponent={
+              <Text style={styles.empty}>Hələ elan yoxdur. Aşağıdakı “+” ilə yeni elan yarat.</Text>
+            }
+            renderItem={({ item }) => (
+              <EmployerJobCard
+                job={item}
+                onPress={() => navigation.navigate("JobDetail", { job: item })}
+                onToggleStatus={toggleJob}
+                loading={loading}
+              />
+            )}
+          />
+        ) : (
+          <FlatList
+            data={allJobs}
+            keyExtractor={(it) => it.id}
+            refreshing={loadingAll}
+            onRefresh={loadAll}
+            contentContainerStyle={{ paddingBottom: 120 }}
+            ListEmptyComponent={
+              <Text style={styles.empty}>Hələ heç bir elan yoxdur.</Text>
+            }
+            renderItem={({ item }) => (
+              <EmployerJobCard
+                job={item}
+                onPress={() => navigation.navigate("JobDetail", { job: item })}
+                // No onToggleStatus for others' jobs
+                readonly={true}
+              />
+            )}
+          />
+        )}
       </View>
     </SafeScreen>
   );

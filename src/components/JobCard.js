@@ -6,10 +6,8 @@ import { Colors } from "../theme/colors";
 export function JobCard({ job, onPress, showDailyBadge = true }) {
     const isDaily = job.isDaily;
 
-    // Format wage nicely
     const wageDisplay = job.wage ? job.wage.replace("AZN", "₼") : "—";
 
-    // Format distance
     const distDisplay = typeof job.distanceM === "number"
         ? (job.distanceM > 1000 ? `${(job.distanceM / 1000).toFixed(1)} km` : `${job.distanceM} m`)
         : null;
@@ -74,7 +72,6 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         marginBottom: 16,
         padding: 16,
-        // Modern deep shadow
         shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.1,

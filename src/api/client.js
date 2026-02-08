@@ -2,8 +2,6 @@ let AUTH_TOKEN = null;
 let REFRESH_TOKEN = null;
 let TOKEN_UPDATE_HANDLER = null;
 
-// Set this in Expo:
-// EXPO_PUBLIC_API_BASE_URL=https://YOUR-SERVICE.onrender.com
 const envUrl = (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_BASE_URL) || "https://asimos-backend.onrender.com";
 const RAW_API_BASE_URL = envUrl.trim();
 export const API_BASE_URL = RAW_API_BASE_URL.replace(/\/+$/, "");
@@ -31,14 +29,12 @@ let refreshPromise = null;
 async function refreshSessionOrThrow() {
   if (!REFRESH_TOKEN) throw new Error("No refresh token");
 
-  // Deduplicate inflight refresh requests
   if (refreshPromise) {
     return refreshPromise;
   }
 
   refreshPromise = (async () => {
     try {
-      // NOTE: Don't set hop-by-hop headers (e.g. Connection). iOS can reject them.
       const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
@@ -79,7 +75,6 @@ async function refreshSessionOrThrow() {
 async function request(path, { method = "GET", body, _retry = false } = {}) {
   const p = (path || "/").startsWith("/") ? path : `/${path}`;
   const url = `${API_BASE_URL}${p}`;
-  // NOTE: Don't set hop-by-hop headers (e.g. Connection). iOS can reject them.
   const headers = { "Accept": "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (AUTH_TOKEN) headers.Authorization = `Bearer ${AUTH_TOKEN}`;
@@ -106,13 +101,11 @@ async function request(path, { method = "GET", body, _retry = false } = {}) {
     data = text;
   }
 
-  // If token expired, refresh once and retry
   if (res.status === 401 && !_retry && REFRESH_TOKEN) {
     try {
       await refreshSessionOrThrow();
       return request(path, { method, body, _retry: true });
     } catch (e) {
-      // fallthrough to error
     }
   }
 
@@ -131,7 +124,6 @@ function qs(params) {
 }
 
 export const api = {
-  // Auth
   login: (payload) => request("/auth/login", { method: "POST", body: payload }),
   register: (payload) => request("/auth/register", { method: "POST", body: payload }),
   verifyOtp: (payload) => request("/auth/verify-otp", { method: "POST", body: payload }),
@@ -141,12 +133,10 @@ export const api = {
   forgotPassword: (email) => request("/auth/forgot-password", { method: "POST", body: { email } }),
   resetPassword: (payload) => request("/auth/reset-password", { method: "POST", body: payload }),
 
-  // Location
   updateMyLocation: (location) => request("/me/location", { method: "PATCH", body: { location } }),
   setPushToken: (expoPushToken) => request("/me/push-token", { method: "POST", body: { expoPushToken } }),
   clearPushToken: () => request("/me/push-token", { method: "DELETE" }),
 
-  // Jobs
   listJobs: () => request("/jobs"),
   listMyJobs: (createdBy) => request(`/jobs?createdBy=${encodeURIComponent(createdBy)}`),
   listJobsWithSearch: ({ q, lat, lng, radius_m, daily }) => request(`/jobs${qs({ q, lat, lng, radius_m, daily })}`),
@@ -155,20 +145,16 @@ export const api = {
   closeJob: (id, { reason } = {}) => request(`/jobs/${encodeURIComponent(String(id))}/close`, { method: "PATCH", body: { reason } }),
   reopenJob: (id) => request(`/jobs/${encodeURIComponent(String(id))}/reopen`, { method: "PATCH" }),
 
-  // Categories (admin-managed)
   listCategories: () => request("/categories"),
   getContent: (slug) => request(`/content/${encodeURIComponent(slug)}`),
 
-  // Notifications
   listMyNotifications: ({ limit = 50, offset = 0 } = {}) => request(`/me/notifications${qs({ limit, offset })}`),
   getUnreadNotificationsCount: () => request("/me/notifications/unread-count"),
   markNotificationRead: (id) => request(`/me/notifications/${encodeURIComponent(String(id))}/read`, { method: "PATCH" }),
   markAllNotificationsRead: () => request("/me/notifications/read-all", { method: "POST" }),
 
-  // Ratings
   rateUser: (payload) => request("/ratings", { method: "POST", body: payload }),
 
-  // Job Alerts
   listMyAlerts: () => request("/me/alerts"),
   createAlert: (payload) => request("/me/alerts", { method: "POST", body: payload }),
   deleteAlert: (id) => request(`/me/alerts/${encodeURIComponent(String(id))}`, { method: "DELETE" }),

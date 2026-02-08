@@ -23,7 +23,6 @@ export function LocationAutoScreen() {
           return;
         }
         await updateLocation(loc);
-        // RootNavigator will route to tabs automatically
       } catch {
         if (!mounted) return;
         setStatus("denied");

@@ -57,12 +57,10 @@ export function VerifyOtpScreen() {
         toast.show(res.message || "Hesabınız təsdiq gözləyir.", "success");
         setTimeout(() => {
           if (nav.canGoBack()) nav.goBack();
-          // Or navigate to Login if available
         }, 1500);
         return;
       }
 
-      // Close modal and return to previous screen
       if (nav.canGoBack()) nav.goBack();
       if (redirect?.screen) {
         requestAnimationFrame(() => {

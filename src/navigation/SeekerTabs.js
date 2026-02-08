@@ -84,7 +84,6 @@ export function SeekerTabs() {
         component={SeekerProfileScreen}
         listeners={({ navigation }) => ({
           tabPress: (e) => {
-            // Guest mode: go directly to Login/Register instead of showing a profile CTA.
             if (!user) {
               e.preventDefault();
               navigation.navigate("AuthEntry");
@@ -117,7 +116,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderTopWidth: 0,
     paddingBottom: 0, // Override default safe area padding often added by generic styles
-    // Shadow
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,

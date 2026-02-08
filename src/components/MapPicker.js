@@ -24,13 +24,11 @@ export function MapPicker({ visible, onClose, onPicked, initial, userLocation })
     const uLat = (typeof userLocation?.lat === "number") ? Number(userLocation.lat) : null;
     const uLng = (typeof userLocation?.lng === "number") ? Number(userLocation.lng) : null;
 
-    // Default to user location if available, otherwise fallback to hardcoded Baku
     const initLat = Number(initial?.lat ?? uLat ?? 40.4093);
     const initLng = Number(initial?.lng ?? uLng ?? 49.8671);
     const initAddress = initial?.address ?? "";
     const apiBase = String(API_BASE_URL || "").replace(/\/$/, "");
 
-    // JSON literals to embed safely
     const apiBaseJSON = JSON.stringify(apiBase);
     const initAddressJSON = JSON.stringify(initAddress);
 
@@ -138,7 +136,6 @@ export function MapPicker({ visible, onClose, onPicked, initial, userLocation })
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    // Utils
     function send(type, payload) {
       try { window.ReactNativeWebView.postMessage(JSON.stringify({ type, payload })); } catch(e){}
     }
@@ -151,7 +148,6 @@ export function MapPicker({ visible, onClose, onPicked, initial, userLocation })
     const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([initLat, initLng], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-    // Initial user location marker (blue dot)
     const uLat = ${uLatJs};
     const uLng = ${uLngJs};
     if (uLat !== null && uLng !== null) {
@@ -165,7 +161,6 @@ export function MapPicker({ visible, onClose, onPicked, initial, userLocation })
 
     let selected = { lat: initLat, lng: initLng, address: ${initAddressJSON} || '' };
     
-    // Reverse Geocode Logic
     let debounceTimer = null;
     async function reverseGeocode(lat, lng) {
       document.getElementById('address-text').innerText = 'Yüklənir...';
@@ -186,7 +181,6 @@ export function MapPicker({ visible, onClose, onPicked, initial, userLocation })
       send('updated', selected);
     }
 
-    // Map Move Logic
     function onMapMoveEnd() {
       const center = map.getCenter();
       reverseGeocode(center.lat, center.lng);
@@ -197,10 +191,8 @@ export function MapPicker({ visible, onClose, onPicked, initial, userLocation })
       debounceTimer = setTimeout(onMapMoveEnd, 500);
     });
     
-    // Run once on init
     reverseGeocode(initLat, initLng);
 
-    // Search Logic
     document.getElementById('q').addEventListener('keydown', async (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -209,8 +201,6 @@ export function MapPicker({ visible, onClose, onPicked, initial, userLocation })
         
         try {
           const url = API_BASE + '/geo/search?q=' + encodeURIComponent(q);
-          // or use nominatim direct if backend not available: 
-          // const url = 'https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(q);
           const res = await fetch(url);
           const data = await res.json();
           if(data && data[0]) {
@@ -224,7 +214,6 @@ export function MapPicker({ visible, onClose, onPicked, initial, userLocation })
       }
     });
 
-    // Buttons
     document.getElementById('back-btn').addEventListener('click', () => {
       send('cancel');
     });

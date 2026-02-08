@@ -16,7 +16,6 @@ export function MapPreview({ userLocation, jobLocation, height = 220 }) {
     const jLat = j?.lat ?? null;
     const jLng = j?.lng ?? null;
 
-    // Inject numbers/null into HTML JS
     const uLatJs = (uLat === null ? "null" : Number(uLat));
     const uLngJs = (uLng === null ? "null" : Number(uLng));
     const jLatJs = (jLat === null ? "null" : Number(jLat));
@@ -58,7 +57,6 @@ export function MapPreview({ userLocation, jobLocation, height = 220 }) {
     const jLat = ${jLatJs};
     const jLng = ${jLngJs};
 
-    // Icons
     const userIcon = L.divIcon({
       className: 'user-dot',
       html: '<div style="width:14px;height:14px;border-radius:999px;background:#1d4ed8;border:2px solid #fff;box-shadow:0 0 10px rgba(0,0,0,0.2)"></div>',
@@ -80,7 +78,6 @@ export function MapPreview({ userLocation, jobLocation, height = 220 }) {
     }
 
     if (uLat !== null && uLng !== null && jLat !== null && jLng !== null) {
-      // Draw Route (Car profile is default OSRM)
       L.Routing.control({
         waypoints: [
           L.latLng(uLat, uLng),
@@ -102,10 +99,7 @@ export function MapPreview({ userLocation, jobLocation, height = 220 }) {
       }).on('routesfound', function(e) {
         const routes = e.routes;
         const summary = routes[0].summary;
-        // summary.totalDistance (m)
-        // summary.totalTime (s)
         
-        // Add a custom info box
         const distKm = (summary.totalDistance / 1000).toFixed(1);
         const timeMin = Math.round(summary.totalTime / 60);
         
@@ -116,7 +110,6 @@ export function MapPreview({ userLocation, jobLocation, height = 220 }) {
         document.body.appendChild(infoDiv);
       }).addTo(map);
       
-      // Force fit bounds to show both points immediately
       const bounds = L.latLngBounds([ [uLat, uLng], [jLat, jLng] ]);
       map.fitBounds(bounds, { padding: [50, 50] });
 

@@ -53,7 +53,6 @@ export function SeekerJobsListScreen() {
     React.useCallback(() => {
       api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => { });
 
-      // Poll so newly created jobs (by employer/admin) show up even if no manual refresh.
       const t = setInterval(() => {
         loadList();
       }, 15000);
@@ -61,27 +60,22 @@ export function SeekerJobsListScreen() {
     }, [])
   );
 
-  // Refresh unread count immediately when a push arrives
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener("asimos:pushReceived", () => {
       api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => { });
-      // Also refresh the list so new jobs appear without manual reload.
       loadList();
     });
     return () => sub?.remove?.();
   }, []);
 
-  // Guest mode / Initial Load: Try to get fresh location to show relevant jobs.
   useEffect(() => {
     if (didInit.current) return;
     didInit.current = true;
 
     (async () => {
-      // Start loading immediately with what we have (or null)
       if (user?.location) {
         loadList(user.location);
       } else {
-        // If no user location, try to fetch GPS
         setLoading(true);
         try {
           const fresh = await getDeviceLocationOrNull({ timeoutMs: 4000 });
@@ -134,8 +128,6 @@ export function SeekerJobsListScreen() {
     try {
       const loc = locOverride || baseLocation || user?.location;
       setLoading(true);
-      // Guest mode: if the user hasn't shared location yet, still show jobs.
-      // Backend will fallback to "latest open" when lat/lng is missing.
       const data = await api.listJobsWithSearch({
         q: q?.trim() || "",
         lat: loc?.lat,
@@ -156,7 +148,6 @@ export function SeekerJobsListScreen() {
   }, [user?.location?.lat, user?.location?.lng]);
 
   useEffect(() => {
-    // If we have a location, we can use it to sort by distance (even if radius is 0/infinite)
     if (!location?.lat || !location?.lng) return;
     didInit.current = true;
     loadList(location);
@@ -301,8 +292,6 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     marginTop: -20, // To pull up under the transparent status bar if needed, or just remove
     backgroundColor: Colors.bg, // Match background
-    // borderBottomWidth: 1,
-    // borderBottomColor: Colors.border,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

@@ -22,7 +22,6 @@ export function TermsScreen() {
                 const data = await api.getContent(slug);
                 setContent(data);
             } catch (e) {
-                // ignore
             } finally {
                 setLoading(false);
             }
@@ -31,7 +30,6 @@ export function TermsScreen() {
 
     const displayTitle = titleOverride || content?.title || "Məlumat";
 
-    // Prepare HTML content
     const htmlContent = content ? `
       <!DOCTYPE html>
       <html>

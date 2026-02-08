@@ -3,10 +3,9 @@ import { StyleSheet, Text, View, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../theme/colors";
 
-export function EmployerJobCard({ job, onPress, onToggleStatus, loading }) {
+export function EmployerJobCard({ job, onPress, onToggleStatus, loading, readonly = false }) {
     const isDaily = job.isDaily;
 
-    // Status Styles Configuration
     const statusConfig = useMemo(() => ({
         open: {
             label: "Aktiv",
@@ -35,7 +34,6 @@ export function EmployerJobCard({ job, onPress, onToggleStatus, loading }) {
     const currentStatus = statusConfig[status] || statusConfig.open;
     const isClosed = status === "closed";
 
-    // Format wage
     const wageDisplay = job.wage ? job.wage.replace("AZN", "₼") : "—";
 
     return (
@@ -87,23 +85,25 @@ export function EmployerJobCard({ job, onPress, onToggleStatus, loading }) {
 
             {/* Actions Footer */}
             <View style={styles.footer}>
-                <Pressable
-                    style={[styles.actionBtn, isClosed ? styles.btnReopen : styles.btnClose]}
-                    onPress={() => onToggleStatus(job)}
-                    disabled={loading}
-                >
-                    {isClosed ? (
-                        <>
-                            <Ionicons name="refresh" size={16} color="#16A34A" />
-                            <Text style={[styles.actionText, { color: "#16A34A" }]}>Elanı Aç</Text>
-                        </>
-                    ) : (
-                        <>
-                            <Ionicons name="lock-closed" size={16} color="#DC2626" />
-                            <Text style={[styles.actionText, { color: "#DC2626" }]}>Elanı Bağla</Text>
-                        </>
-                    )}
-                </Pressable>
+                {!readonly && (
+                    <Pressable
+                        style={[styles.actionBtn, isClosed ? styles.btnReopen : styles.btnClose]}
+                        onPress={() => onToggleStatus(job)}
+                        disabled={loading}
+                    >
+                        {isClosed ? (
+                            <>
+                                <Ionicons name="refresh" size={16} color="#16A34A" />
+                                <Text style={[styles.actionText, { color: "#16A34A" }]}>Elanı Aç</Text>
+                            </>
+                        ) : (
+                            <>
+                                <Ionicons name="lock-closed" size={16} color="#DC2626" />
+                                <Text style={[styles.actionText, { color: "#DC2626" }]}>Elanı Bağla</Text>
+                            </>
+                        )}
+                    </Pressable>
+                )}
 
                 <View style={styles.viewBtn}>
                     <Text style={styles.viewText}>Bax</Text>
@@ -120,7 +120,6 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         marginBottom: 16,
         padding: 16,
-        // Modern deep shadow matching JobCard
         shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.1,

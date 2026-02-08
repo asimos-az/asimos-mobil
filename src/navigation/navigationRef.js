@@ -6,6 +6,5 @@ export function navTo(name, params) {
   try {
     if (navigationRef.isReady()) navigationRef.navigate(name, params);
   } catch {
-    // ignore
   }
 }

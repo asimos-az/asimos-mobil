@@ -19,7 +19,6 @@ export function SeekerProfileScreen() {
   const navigation = useNavigation();
   const { user, signOut, updateLocation, isSigningOut } = useAuth();
 
-  // Guest mode: profile requires an account
   if (!user) {
     if (isSigningOut) return null;
     return (
@@ -70,7 +69,6 @@ export function SeekerProfileScreen() {
     return parts.map((p) => p[0]?.toUpperCase()).join("") || "A";
   }, [user?.fullName]);
 
-  // Sync notification switch with OS permission + token state
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -79,25 +77,19 @@ export function SeekerProfileScreen() {
 
       const enabled = await AsyncStorage.getItem(ENABLED_KEY).catch(() => null);
 
-      // 1. Check OS Permission
       const perm = await Notifications.getPermissionsAsync().catch(() => ({ status: "undetermined" }));
 
-      // If OS permission is granted
       if (perm?.status === "granted") {
-        // Optimistically show as ON if not explicitly disabled by user
         if (enabled !== "0") {
           setNotifEnabled(true);
         }
 
-        // Try to sync token in background
         if (enabled !== "0") {
           const token = await registerForPushNotificationsAsync();
           if (!alive) return;
 
           if (token) {
-            // Sync state
             await AsyncStorage.setItem(ENABLED_KEY, "1").catch(() => { });
-            // Ensure token is on server
             const prev = await AsyncStorage.getItem(TOKEN_KEY).catch(() => null);
             if (prev !== token) {
               await api.setPushToken(token).catch(() => { });
@@ -108,16 +100,13 @@ export function SeekerProfileScreen() {
         }
       }
 
-      // Otherwise off
       if (alive) setNotifEnabled(false);
 
-      // Load sound setting
       const soundVal = await AsyncStorage.getItem("ASIMOS_NOTIF_SOUND_ENABLED").catch(() => null);
       if (alive && soundVal !== null) {
         setSoundEnabled(soundVal === "1");
       }
 
-      // Load sound name
       const nameVal = await AsyncStorage.getItem("ASIMOS_NOTIF_SOUND_NAME").catch(() => null);
       if (alive && nameVal) {
         setSoundName(nameVal);
@@ -129,7 +118,6 @@ export function SeekerProfileScreen() {
     };
   }, []);
 
-  // Lightweight stats for seeker (notifications + location)
   useEffect(() => {
     let alive = true;
 
@@ -214,7 +202,6 @@ export function SeekerProfileScreen() {
       setSoundEnabled(val);
       await AsyncStorage.setItem("ASIMOS_NOTIF_SOUND_ENABLED", val ? "1" : "0");
     } catch {
-      // ignore
     } finally {
       setSoundLoading(false);
     }

@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Text, View }
 import { WebView } from "react-native-webview";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import * as Location from "expo-location";
 
 import { SafeScreen } from "../../components/SafeScreen";
 import { SegmentedControl } from "../../components/SegmentedControl";
@@ -20,7 +21,6 @@ const RADIUS_PRESETS = [
 const DEFAULT_LOC = { lat: 40.4093, lng: 49.8671 }; // Bakı fallback
 
 function safeJson(obj) {
-  // prevent HTML injection from job text
   return JSON.stringify(obj).replace(/</g, "\\u003c");
 }
 
@@ -97,16 +97,13 @@ export function EmployerMapScreen() {
       didInit.current = true;
       load();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseLoc?.lat, baseLoc?.lng]);
 
   useEffect(() => {
     if (!didInit.current) return;
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [radius]);
 
-  // WebView hazır olanda marker-ləri inject ilə yenilə (tam reload etmədən)
   useEffect(() => {
     if (!webReady) return;
 
@@ -121,6 +118,33 @@ export function EmployerMapScreen() {
 
     webRef.current?.injectJavaScript(js);
   }, [webReady, jobsJson]);
+
+  // Live Location Watcher
+  useEffect(() => {
+    let sub = null;
+    (async () => {
+      // Check perm first (assumed granted if we are here, but safe check)
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== "granted") return;
+
+      sub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 10 },
+        (loc) => {
+          const { latitude, longitude } = loc.coords;
+          if (webRef.current && webReady) {
+            webRef.current.injectJavaScript(`
+              try { if(window.updateUserLocation) window.updateUserLocation(${latitude}, ${longitude}); } catch(e){}
+              true;
+            `);
+          }
+        }
+      );
+    })();
+
+    return () => {
+      sub?.remove();
+    };
+  }, [webReady]);
 
   const baseHtml = useMemo(() => {
     const u = baseLoc || DEFAULT_LOC;
@@ -150,8 +174,22 @@ export function EmployerMapScreen() {
     const DATA = ${dataJson};
     const u = DATA.user;
 
-    const map = L.map('map', { zoomControl: true }).setView([u.lat, u.lng], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    const map = L.map('map', { zoomControl: false }).setView([u.lat, u.lng], 13);
+    
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+    const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    });
+
+    osm.addTo(map);
+
+    const baseMaps = {
+      "Xəritə": osm,
+      "Peyk": sat
+    };
+
+    L.control.layers(baseMaps).addTo(map);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     const userIcon = L.divIcon({
       className: 'user-dot',
@@ -213,8 +251,10 @@ export function EmployerMapScreen() {
       fitTo(bounds);
     }
 
-    // Expose for RN inject
     window.__ASIMOS_SET_JOBS = setJobs;
+    window.updateUserLocation = function(lat, lng) {
+      if(um) um.setLatLng([lat, lng]);
+    };
     setJobs([]);
   </script>
 </body>
@@ -273,7 +313,7 @@ export function EmployerMapScreen() {
               if (msg?.type === "job" && msg?.payload) {
                 navigation.navigate("JobDetail", { job: msg.payload });
               }
-            } catch {}
+            } catch { }
           }}
         />
 

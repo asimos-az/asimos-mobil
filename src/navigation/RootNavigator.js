@@ -39,12 +39,7 @@ export function RootNavigator() {
     isAuthed &&
     !(user?.location && typeof user.location.lat === "number" && typeof user.location.lng === "number");
 
-  // NOTE: Location permission and auto-detect flow is handled via LocationAutoScreen
-  // (shown for all users until location is saved).
 
-  // Push notifications
-  // 1) First login -> show OS permission prompt once and sync switch state.
-  // 2) Later -> only refresh token when notifications are enabled.
   useEffect(() => {
     let mounted = true;
 
@@ -58,14 +53,11 @@ export function RootNavigator() {
       const asked = await AsyncStorage.getItem(ASKED_KEY).catch(() => null);
       const enabled = await AsyncStorage.getItem(ENABLED_KEY).catch(() => null);
 
-      // If user manually disabled notifications, do nothing.
       if (enabled === "0") {
         await AsyncStorage.setItem(ASKED_KEY, "1").catch(() => { });
         return;
       }
 
-      // If OS permission already granted (e.g., user enabled in Settings),
-      // make sure our in-app switch is ON and token is synced.
       const perm = await Notifications.getPermissionsAsync().catch(() => ({ status: "undetermined" }));
       if (perm?.status === "granted") {
         const token = await registerForPushNotificationsAsync();
@@ -82,7 +74,6 @@ export function RootNavigator() {
         return;
       }
 
-      // Permission not granted. Only prompt once on first login.
       if (asked !== "1") {
         const token = await registerForPushNotificationsAsync();
         if (!mounted) return;
@@ -92,8 +83,6 @@ export function RootNavigator() {
           await AsyncStorage.setItem(TOKEN_KEY, token).catch(() => { });
           try { await api.setPushToken(token); } catch { }
         } else {
-          // User denied OR token failed -> do nothing.
-          // Don't modify ENABLED_KEY. If permission is denied, Profile screen will see that from OS status.
         }
       }
     })();
@@ -103,7 +92,6 @@ export function RootNavigator() {
     };
   }, [isAuthed, user?.id]);
 
-  // When a push notification is tapped, open the related page.
   useEffect(() => {
     let sub = null;
 
@@ -111,14 +99,12 @@ export function RootNavigator() {
       try {
         const data = response?.notification?.request?.content?.data || {};
         if (data?.type === "job" && data?.jobId) {
-          // Fetch job fresh (so it matches current API model)
           const job = await api.getJobById(data.jobId).catch(() => null);
           if (job) {
             if (navigationRef.isReady()) navigationRef.navigate("JobDetail", { job });
             return;
           }
         }
-        // fallback -> open notifications inbox if seeker
         if (navigationRef.isReady() && role === "seeker") navigationRef.navigate("SeekerNotifications");
       } catch {
         if (navigationRef.isReady() && role === "seeker") navigationRef.navigate("SeekerNotifications");
@@ -126,7 +112,6 @@ export function RootNavigator() {
     };
 
     (async () => {
-      // Handle initial open (killed -> opened by push)
       const last = await Notifications.getLastNotificationResponseAsync().catch(() => null);
       if (last) handle(last);
       sub = Notifications.addNotificationResponseReceivedListener(handle);
@@ -137,7 +122,6 @@ export function RootNavigator() {
     };
   }, [role]);
 
-  // When a push notification arrives while the app is running, notify screens to refresh
   useEffect(() => {
     const sub = Notifications.addNotificationReceivedListener(() => {
       try { DeviceEventEmitter.emit("asimos:pushReceived"); } catch { }
@@ -147,12 +131,10 @@ export function RootNavigator() {
     };
   }, []);
 
-  // While auth state is loading, show splash
   if (booting) {
     return <LaunchSplashScreen onDone={() => { }} minMs={1200} />;
   }
 
-  // After boot, show splash once briefly
   if (showSplash) {
     return <LaunchSplashScreen onDone={() => setShowSplash(false)} minMs={850} />;
   }

@@ -5,6 +5,7 @@ import * as Location from "expo-location";
 import Slider from "@react-native-community/slider";
 import { api } from "../../api/client";
 import { Colors } from "../../theme/colors";
+import { SelectField } from "../../components/SelectField";
 
 export default function CreateJobAlertScreen({ navigation }) {
     const [query, setQuery] = useState("");
@@ -14,6 +15,35 @@ export default function CreateJobAlertScreen({ navigation }) {
     const [radius, setRadius] = useState(5000); // meters
     const [loading, setLoading] = useState(false);
     const [location, setLocation] = useState(null);
+
+    const [category, setCategory] = useState("");
+    const [categoryOptions, setCategoryOptions] = useState([]);
+    const [categoriesLoading, setCategoriesLoading] = useState(false);
+
+    useEffect(() => {
+        let alive = true;
+        (async () => {
+            try {
+                setCategoriesLoading(true);
+                const res = await api.listCategories();
+                const items = Array.isArray(res?.items) ? res.items : [];
+                const out = [];
+                for (const p of items) {
+                    if (p?.name) out.push(String(p.name));
+                    const children = Array.isArray(p?.children) ? p.children : [];
+                    for (const c of children) {
+                        if (c?.name) out.push(`↳ ${String(c.name)}`);
+                    }
+                }
+                if (alive) setCategoryOptions(out);
+            } catch (e) {
+                // ignore
+            } finally {
+                if (alive) setCategoriesLoading(false);
+            }
+        })();
+        return () => { alive = false; };
+    }, []);
 
     useEffect(() => {
         if (useLocation) {
@@ -31,7 +61,7 @@ export default function CreateJobAlertScreen({ navigation }) {
     }, [useLocation]);
 
     const handleCreate = async () => {
-        if (!query && !minWage && jobType === "all" && !useLocation) {
+        if (!query && !minWage && jobType === "all" && !useLocation && !category) {
             Alert.alert("Xəta", "Ən azı bir kriteriya daxil edin.");
             return;
         }
@@ -40,6 +70,7 @@ export default function CreateJobAlertScreen({ navigation }) {
         try {
             const payload = {
                 query: query,
+                category: category || null,
                 min_wage: minWage ? Number(minWage) : null,
                 job_type: jobType === "all" ? null : jobType,
                 location: useLocation ? location : null,
@@ -67,6 +98,19 @@ export default function CreateJobAlertScreen({ navigation }) {
                 onChangeText={setQuery}
                 placeholder="Axtarış sözü..."
             />
+
+            <SelectField
+                label="Kateqoriya"
+                value={category}
+                onChange={(v) => {
+                    const raw = String(v || "");
+                    setCategory(raw.startsWith("↳ ") ? raw.slice(2) : raw);
+                }}
+                placeholder="Kateqoriya seç"
+                options={categoryOptions}
+                loading={categoriesLoading}
+            />
+            <View style={{ height: 16 }} />
 
             {/* Min Wage */}
             <Text style={styles.label}>Minimum Maaş (AZN)</Text>

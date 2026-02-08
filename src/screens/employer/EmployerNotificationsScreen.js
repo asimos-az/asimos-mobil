@@ -7,9 +7,6 @@ import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
 import { Card } from "../../components/Card";
 
-// Simple notifications screen.
-// NOTE: backend-də bildiriş tarixçəsi saxlanılmırsa, bu ekran boş görünəcək.
-// İstəsən, gələcəkdə Supabase-də `notifications` cədvəli əlavə edib buradan API ilə yükləyə bilərik.
 
 import { api } from "../../api/client";
 
@@ -24,7 +21,6 @@ export function EmployerNotificationsScreen() {
       const res = await api.listMyNotifications({ limit: 50 });
       setItems(res.items || []);
     } catch (e) {
-      console.warn("Notifications error:", e);
     } finally {
       setLoading(false);
       setRefreshing(false);

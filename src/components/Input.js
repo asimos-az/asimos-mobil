@@ -15,7 +15,6 @@ export function Input({
   numberOfLines=1,
   ...rest
 }) {
-  // Show/hide toggle for password inputs
   const [hidden, setHidden] = useState(!!secureTextEntry);
 
   useEffect(() => {

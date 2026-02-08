@@ -50,7 +50,6 @@ export function SeekerNotificationsScreen() {
     }, [load])
   );
 
-  // If a push arrives while this screen is open, refresh list immediately
   React.useEffect(() => {
     const sub = DeviceEventEmitter.addListener("asimos:pushReceived", () => {
       load();

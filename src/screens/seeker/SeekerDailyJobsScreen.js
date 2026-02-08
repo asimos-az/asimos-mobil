@@ -61,7 +61,6 @@ export function SeekerDailyJobsScreen() {
     }, [])
   );
 
-  // Refresh unread count immediately when a push arrives
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener("asimos:pushReceived", () => {
       api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => { });
@@ -70,7 +69,6 @@ export function SeekerDailyJobsScreen() {
     return () => sub?.remove?.();
   }, []);
 
-  // Guest mode: on first mount, load jobs even if we don't have a saved location yet.
   useEffect(() => {
     if (didInit.current) return;
     didInit.current = true;
@@ -112,7 +110,6 @@ export function SeekerDailyJobsScreen() {
   async function loadList(locOverride) {
     try {
       const loc = locOverride || baseLocation || user?.location;
-      // If radius > 0, we need location. If radius is 0, we are fine without location.
       if (radius > 0 && (!loc?.lat || !loc?.lng)) return;
 
       setLoading(true);

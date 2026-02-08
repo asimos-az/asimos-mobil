@@ -15,7 +15,6 @@ export default function JobAlertsScreen({ navigation }) {
             const data = await api.listMyAlerts();
             setAlerts(data || []);
         } catch (e) {
-            console.error(e);
             Alert.alert("Xəta", "Bildirişləri yükləmək mümkün olmadı.");
         } finally {
             setLoading(false);

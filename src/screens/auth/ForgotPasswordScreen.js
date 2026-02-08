@@ -45,13 +45,9 @@ export function ForgotPasswordScreen() {
         }
         setLoading(true);
         try {
-            // This call returns the user object if successful (handled in AuthContext)
-            // If it returns null, something went wrong but didn't throw (unlikely with our wrapper logic)
-            // Actually our wrapper returns the user or null, but api.resetPassword throws on error.
 
             await resetPassword({ email, code, password });
 
-            // If we get here, login was successful
             Alert.alert("Uğurlu", "Şifrəniz yeniləndi və hesabınıza daxil oldunuz.", [
                 { text: "Davam et", onPress: () => nav.navigate("SeekerTabs") }
             ]);

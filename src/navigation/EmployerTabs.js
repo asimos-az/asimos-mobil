@@ -38,7 +38,6 @@ function EmployerTabBar({ state, navigation }) {
   }
 
   function goCreateJob() {
-    // Tab içindən Root Stack-dəki screen-ə keçmək üçün parent-ə yönləndir.
     const parent = navigation.getParent?.();
     if (parent) parent.navigate("EmployerCreateJob");
     else navigation.navigate("EmployerCreateJob");
@@ -133,9 +132,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
 
-    // Android shadow
     elevation: 10,
-    // iOS shadow
     shadowColor: "#000",
     shadowOpacity: 0.12,
     shadowRadius: 18,

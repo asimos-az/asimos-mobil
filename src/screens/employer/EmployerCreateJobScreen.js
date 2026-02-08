@@ -29,12 +29,10 @@ export function EmployerCreateJobScreen({ navigation }) {
   const [voen, setVoen] = useState("");
   const [description, setDescription] = useState("");
 
-  // Job type (required)
   const [jobType, setJobType] = useState(null); // "permanent" | "temporary"
   const [durationPreset, setDurationPreset] = useState("1"); // "1" | "3" | "10" | "other"
   const [durationOther, setDurationOther] = useState("");
 
-  // Categories are managed from Admin panel (Supabase) and loaded from backend.
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [categoryOptions, setCategoryOptions] = useState([]); // string[] (names, flattened)
 
@@ -46,7 +44,6 @@ export function EmployerCreateJobScreen({ navigation }) {
         const res = await api.listCategories();
         const items = Array.isArray(res?.items) ? res.items : [];
 
-        // Flatten parent -> children, keep names (backend currently stores category as string)
         const out = [];
         for (const p of items) {
           if (p?.name) out.push(String(p.name));
@@ -58,13 +55,11 @@ export function EmployerCreateJobScreen({ navigation }) {
 
         if (alive) {
           setCategoryOptions(out);
-          // If current selected category no longer exists, reset
           if (category && !out.includes(category) && !out.includes(`↳ ${category}`)) {
             setCategory("");
           }
         }
       } catch (e) {
-        // Don't hard fail; user can still type category manually if needed.
         if (alive) setCategoryOptions([]);
       } finally {
         if (alive) setCategoriesLoading(false);
@@ -73,18 +68,13 @@ export function EmployerCreateJobScreen({ navigation }) {
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [location, setLocation] = useState(user.location || null);
 
-  // Auto-fetch location if missing on mount (so map opens at user's current spot)
-  // Auto-fetch location if missing on mount OR if it's the default "Gunesli" location
   useEffect(() => {
     const isDefault = location?.lat && Math.abs(location.lat - 40.4093) < 0.01 && Math.abs(location.lng - 49.8671) < 0.01;
 
-    // Always try to get fresh device location on mount to ensure "Current Location" is accurate
-    // This fixes the issue where user sees their old saved location instead of where they are now.
     import("../../utils/deviceLocation").then(({ getDeviceLocationOrNull }) => {
       getDeviceLocationOrNull().then(loc => {
         if (loc) {
@@ -152,10 +142,8 @@ export function EmployerCreateJobScreen({ navigation }) {
         voen,
         description,
 
-        // Backward compatibility (older server fields)
         isDaily: jobType === "temporary",
 
-        // New fields for auto-expire
         jobType,
         durationDays: jobType === "temporary" ? durationDays : null,
 
@@ -270,7 +258,6 @@ export function EmployerCreateJobScreen({ navigation }) {
             value={category}
             onChange={(v) => {
               const raw = String(v || "");
-              // Remove the visual prefix when saving
               setCategory(raw.startsWith("↳ ") ? raw.slice(2) : raw);
             }}
             placeholder="Kateqoriya seç"
@@ -373,7 +360,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   title: { fontSize: 18, fontWeight: "900", color: Colors.text, flex: 1, textAlign: "center" },
-  // Extra bottom padding so last inputs + button stay visible when keyboard is open
   scroll: { padding: 16, paddingBottom: 160 },
   label: { color: Colors.muted, marginBottom: 6, fontWeight: "900" },
   help: { marginTop: 8, color: Colors.muted, fontSize: 12, fontWeight: "700" },

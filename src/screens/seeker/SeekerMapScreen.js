@@ -5,18 +5,42 @@ import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import * as Location from "expo-location";
 
 export function SeekerMapScreen() {
   const nav = useNavigation();
   const route = useRoute();
   const { jobs = [], userLocation = null } = route.params || {};
   const [loading, setLoading] = useState(true);
+  const webRef = React.useRef(null);
+
+  // Live location watcher
+  React.useEffect(() => {
+    let sub = null;
+    (async () => {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== "granted") return;
+
+      sub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 10 },
+        (loc) => {
+          const { latitude, longitude } = loc.coords;
+          if (webRef.current) {
+            webRef.current.injectJavaScript(`
+              try { if(window.updateMe) window.updateMe(${latitude}, ${longitude}); } catch(e){}
+              true;
+            `);
+          }
+        }
+      );
+    })();
+    return () => sub?.remove();
+  }, []);
 
   const html = useMemo(() => {
     const uLat = (typeof userLocation?.lat === "number") ? Number(userLocation.lat) : null;
     const uLng = (typeof userLocation?.lng === "number") ? Number(userLocation.lng) : null;
 
-    // Serialize jobs to JSON safely
     const jobsData = JSON.stringify(jobs.map(j => ({
       id: j.id,
       title: j.title || "İş elanı",
@@ -73,23 +97,44 @@ export function SeekerMapScreen() {
     const uLng = ${uLng};
 
     const map = L.map('map', { zoomControl: false }).setView([40.4093, 49.8671], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+    const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    });
+
+    osm.addTo(map);
+
+    const baseMaps = {
+      "Xəritə": osm,
+      "Peyk": sat
+    };
+
+    L.control.layers(baseMaps).addTo(map);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     function send(type, payload) {
       if(window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify({ type, payload }));
     }
 
-    // User Marker
+    let um = null;
+    window.updateMe = function(lat, lng) {
+      if(um) {
+        um.setLatLng([lat, lng]);
+      } else {
+        const uIcon = L.divIcon({
+          className: 'user-dot',
+          html: '<div style="width:16px;height:16px;border-radius:50%;background:#3b82f6;border:3px solid #fff;box-shadow:0 0 10px rgba(0,0,0,0.3)"></div>',
+          iconSize: [16,16], iconAnchor: [8,8]
+        });
+        um = L.marker([lat, lng], { icon: uIcon, zIndexOffset: 1000 }).addTo(map);
+      }
+    };
+
     if(uLat && uLng) {
-      const uIcon = L.divIcon({
-        className: 'user-dot',
-        html: '<div style="width:16px;height:16px;border-radius:50%;background:#3b82f6;border:3px solid #fff;box-shadow:0 0 10px rgba(0,0,0,0.3)"></div>',
-        iconSize: [16,16], iconAnchor: [8,8]
-      });
-      L.marker([uLat, uLng], { icon: uIcon, zIndexOffset: 1000 }).addTo(map);
+      window.updateMe(uLat, uLng);
     }
 
-    // Job Markers
     let currentRoute = null;
     let selectedJob = null;
 
@@ -118,15 +163,12 @@ export function SeekerMapScreen() {
     function selectJob(job) {
       selectedJob = job;
       
-      // Update Card UI
       document.getElementById('card-title').innerText = job.title;
       document.getElementById('card-meta').innerText = (job.wage ? (job.wage + ' • ') : '') + 'Hesablanır...';
       document.getElementById('info-card').className = 'visible';
       
-      // Clear prev route
       if(currentRoute) { map.removeControl(currentRoute); currentRoute = null; }
 
-      // Draw Route if user loc exists
       if(uLat && uLng) {
         currentRoute = L.Routing.control({
           waypoints: [ L.latLng(uLat, uLng), L.latLng(job.lat, job.lng) ],
@@ -144,12 +186,10 @@ export function SeekerMapScreen() {
       }
     }
 
-    // Handle Card Click
     document.getElementById('card-btn').addEventListener('click', () => {
       if(selectedJob) send('openJob', selectedJob.id);
     });
 
-    // Close card on map click
     map.on('click', (e) => {
       if(e.originalEvent.target.id === 'map') {
          document.getElementById('info-card').className = '';
@@ -173,6 +213,7 @@ export function SeekerMapScreen() {
       </View>
 
       <WebView
+        ref={webRef}
         source={{ html }}
         style={{ flex: 1 }}
         onLoadEnd={() => setLoading(false)}

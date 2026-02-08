@@ -8,14 +8,12 @@ import { Colors } from "../theme/colors";
  * Adjusted for better visibility on splash.
  */
 export function HandwritingWatermark({ text = "Asimos", size = 64, opacity = 0.32 }) {
-  // Make clip wide enough so the whole word doesn't get permanently cut
   const CLIP_WIDTH = 460;
 
   const clip = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(opacity * 0.55)).current;
 
   const fontFamily = useMemo(() => {
-    // Script-like fonts on iOS; Android fallback to "cursive"
     if (Platform.OS === "ios") return "Snell Roundhand";
     return "cursive";
   }, []);

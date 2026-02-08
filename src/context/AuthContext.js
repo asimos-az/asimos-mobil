@@ -59,7 +59,6 @@ export function AuthProvider({ children }) {
 
     (async () => {
       try {
-        // 1. Load persisted session
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (!raw) return;
 
@@ -68,7 +67,6 @@ export function AuthProvider({ children }) {
           ? { ...parsed.user, role: normalizeRole(parsed.user?.role) || null }
           : null;
 
-        // Hydrate state immediately
         if (!cancelled) {
           setToken(parsed.token || null);
           setRefreshTokenState(parsed.refreshToken || null);
@@ -77,22 +75,15 @@ export function AuthProvider({ children }) {
         setAuthToken(parsed.token || null);
         setRefreshToken(parsed.refreshToken || null);
 
-        // 2. Auto-Update Location (LIVE LOCATION)
         if (parsed.token) {
-          // Fire and forget - don't block
-          getDeviceLocationOrNull({ timeoutMs: 5000 }).then(async (loc) => {
+          getDeviceLocationOrNull({ timeoutMs: 5000, force: true }).then(async (loc) => {
             if (loc && !cancelled) {
-              // Update local state silently
               setUser(prev => ({ ...prev, location: loc }));
-              // Sync to backend
               try { await api.updateMyLocation(loc); } catch { }
             }
           });
         }
 
-        // Proactive refresh on app start:
-        // If access token is expired, some screens hit the API immediately and show "Invalid token".
-        // We refresh once here (silently) so the first API call already has a fresh access token.
         if (parsed.refreshToken) {
           try {
             const refreshed = await api.refresh(parsed.refreshToken);
@@ -101,7 +92,6 @@ export function AuthProvider({ children }) {
 
             await persist(refreshed.token, refreshed.refreshToken || parsed.refreshToken, nextUser);
           } catch (e) {
-            // Only force re-login if explicit auth failure
             if (e.status === 401 || e.status === 403) {
               try { await AsyncStorage.removeItem(STORAGE_KEY); } catch { }
               clearAuthToken();
@@ -111,13 +101,10 @@ export function AuthProvider({ children }) {
                 setUser(null);
               }
             } else {
-              console.log("[Auth] Refresh failed but keeping session (network?):", e.message);
             }
           }
         }
 
-        // 3. Auto-Register Push Token on Boot (CRITICAL FIX)
-        // Ensures that even if token changes (reinstall/update), we sync it.
         if (parsed.token || parsed.user) {
           setTimeout(() => {
             import("../utils/pushNotifications").then(({ registerForPushNotificationsAsync }) => {
@@ -157,7 +144,6 @@ export function AuthProvider({ children }) {
     signIn: async ({ email, password, roleHint }) => {
       const res = await api.login({ email, password });
       const nextUser = { ...(res.user || {}) };
-      // Backend role gəlməsə də (köhnə user və ya boş profil) UI-də seçilən rolu fallback kimi saxla.
       nextUser.role = normalizeRole(nextUser.role) || null;
       if (!nextUser.role && roleHint) {
         const hint = normalizeRole(roleHint) || roleHint;
@@ -166,7 +152,6 @@ export function AuthProvider({ children }) {
       }
       await persist(res.token, res.refreshToken, nextUser);
 
-      // Auto-ask for push
       setTimeout(() => {
         import("../utils/pushNotifications").then(({ registerForPushNotificationsAsync }) => {
           registerForPushNotificationsAsync().then(token => {
@@ -178,16 +163,13 @@ export function AuthProvider({ children }) {
       return nextUser;
     },
 
-    // Step 1: send OTP email (signup confirmation)
     startRegister: async (payload) => {
       return api.register(payload); // { ok, needsOtp, ... }
     },
 
-    // Step 2: verify OTP => session tokens
     verifyEmailOtp: async ({ email, code, password, role, fullName, companyName, phone }) => {
       const res = await api.verifyOtp({ email, code, password, role, fullName, companyName, phone });
 
-      // If pending approval, don't login/persist
       if (res.pendingApproval) {
         return res;
       }
@@ -201,7 +183,6 @@ export function AuthProvider({ children }) {
       }
       await persist(res.token, res.refreshToken, nextUser);
 
-      // Auto-ask for push
       setTimeout(() => {
         import("../utils/pushNotifications").then(({ registerForPushNotificationsAsync }) => {
           registerForPushNotificationsAsync().then(token => {
@@ -222,7 +203,6 @@ export function AuthProvider({ children }) {
         nextUser.role = normalizeRole(nextUser.role) || null;
         await persist(res.token, res.refreshToken, nextUser);
 
-        // Auto-ask for push
         setTimeout(() => {
           import("../utils/pushNotifications").then(({ registerForPushNotificationsAsync }) => {
             registerForPushNotificationsAsync().then(token => {
@@ -248,10 +228,8 @@ export function AuthProvider({ children }) {
     },
 
     signOut: async () => {
-      // Prevent a 1-frame flash of the guest-gate UI while we reset navigation
       setIsSigningOut(true);
 
-      // First: navigate away from Profile to Jobs list
       try {
         if (navigationRef.isReady()) {
           navigationRef.resetRoot({
@@ -260,22 +238,18 @@ export function AuthProvider({ children }) {
           });
         }
       } catch {
-        // ignore
       }
 
-      // Then: clear auth state + persisted session
       setToken(null);
       setRefreshTokenState(null);
       setUser(null);
       clearAuthToken();
       await AsyncStorage.removeItem(STORAGE_KEY);
       await AsyncStorage.removeItem(ROLE_HINT_KEY).catch(() => { });
-      // location permission prompt-un bir dəfəlik flag-i
       await AsyncStorage.removeItem("ASIMOS_LOC_ASKED_V1").catch(() => { });
       await AsyncStorage.removeItem("ASIMOS_NOTIF_ENABLED_V2").catch(() => { });
       await AsyncStorage.removeItem("ASIMOS_NOTIF_ASKED_V2").catch(() => { });
 
-      // Small timeout to ensure UI stays clean during navigation transition
       setTimeout(() => setIsSigningOut(false), 300);
     }
   }), [booting, isSigningOut, token, refreshToken, user]);

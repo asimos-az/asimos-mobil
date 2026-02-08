@@ -20,7 +20,6 @@ export function ToastProvider({ children }) {
 
         setToast({ message, type });
 
-        // Reset animation values
         opacity.setValue(0);
         translateY.setValue(-50);
 

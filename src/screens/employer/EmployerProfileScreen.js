@@ -49,17 +49,14 @@ export function EmployerProfileScreen() {
       const ENABLED_KEY = "ASIMOS_NOTIF_ENABLED_V1";
       const TOKEN_KEY = "ASIMOS_EXPO_PUSH_TOKEN_V1";
 
-      // If user manually disabled, keep OFF.
       const enabled = await AsyncStorage.getItem(ENABLED_KEY).catch(() => null);
       if (enabled === "0") {
         if (alive) setNotifEnabled(false);
         return;
       }
 
-      // Sync with real OS permission state.
       const perm = await Notifications.getPermissionsAsync().catch(() => ({ status: "undetermined" }));
       if (perm?.status === "granted") {
-        // Make sure we have token stored + on server
         const token = await registerForPushNotificationsAsync();
         if (!alive) return;
         if (token) {
@@ -74,7 +71,6 @@ export function EmployerProfileScreen() {
         }
       }
 
-      // Not granted or token unavailable -> show OFF
       if (alive) setNotifEnabled(false);
 
       const soundVal = await AsyncStorage.getItem("ASIMOS_NOTIF_SOUND_ENABLED").catch(() => null);
@@ -82,7 +78,6 @@ export function EmployerProfileScreen() {
         setSoundEnabled(soundVal === "1");
       }
 
-      // Load sound name
       const nameVal = await AsyncStorage.getItem("ASIMOS_NOTIF_SOUND_NAME").catch(() => null);
       if (alive && nameVal) {
         setSoundName(nameVal);
@@ -117,7 +112,6 @@ export function EmployerProfileScreen() {
       }
     }
 
-    // initial + refresh when screen focused
     loadStats();
     const unsub = navigation.addListener?.("focus", loadStats);
     return () => {
@@ -127,7 +121,6 @@ export function EmployerProfileScreen() {
   }, [navigation, user?.id]);
 
   function goCreateJob() {
-    // Tab içindən Root Stack-dəki screen-ə keçmək üçün parent-ə yönləndir.
     const parent = navigation.getParent?.();
     if (parent) parent.navigate("EmployerCreateJob");
     else navigation.navigate("EmployerCreateJob");
@@ -184,7 +177,6 @@ export function EmployerProfileScreen() {
       setSoundEnabled(val);
       await AsyncStorage.setItem("ASIMOS_NOTIF_SOUND_ENABLED", val ? "1" : "0");
     } catch {
-      // ignore
     } finally {
       setSoundLoading(false);
     }

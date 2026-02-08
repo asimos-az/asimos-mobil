@@ -24,12 +24,16 @@ function withTimeout(promise, ms, label = "timeout") {
  * Requests permission and returns { lat, lng, address }.
  * If denied or location services off or timeout -> returns null.
  */
-export async function getDeviceLocationOrNull({ timeoutMs = 12000 } = {}) {
+export async function getDeviceLocationOrNull({ timeoutMs = 12000, force = false } = {}) {
   try {
     const services = await Location.hasServicesEnabledAsync().catch(() => true);
     if (!services) return null;
 
-    const { status } = await withTimeout(Location.requestForegroundPermissionsAsync(), timeoutMs, "permission_timeout");
+    let { status } = await Location.getForegroundPermissionsAsync();
+    if (status !== "granted" || force) {
+      const res = await withTimeout(Location.requestForegroundPermissionsAsync(), timeoutMs, "permission_timeout");
+      status = res.status;
+    }
     if (status !== "granted") return null;
 
     let pos = null;
@@ -40,7 +44,6 @@ export async function getDeviceLocationOrNull({ timeoutMs = 12000 } = {}) {
         "position_timeout"
       );
     } catch {
-      // fallback to last known
       pos = await Location.getLastKnownPositionAsync();
     }
 
@@ -54,7 +57,6 @@ export async function getDeviceLocationOrNull({ timeoutMs = 12000 } = {}) {
       const rev = await withTimeout(Location.reverseGeocodeAsync({ latitude: lat, longitude: lng }), timeoutMs, "geocode_timeout");
       if (rev && rev[0]) address = formatAddress(rev[0]);
     } catch {
-      // ignore
     }
 
     return {

@@ -4,6 +4,7 @@ import { Alert, Image, ScrollView, StyleSheet, Text, View, Pressable, KeyboardAv
 import { SafeScreen } from "../../components/SafeScreen";
 import { BackgroundDecor } from "../../components/BackgroundDecor";
 import { Input } from "../../components/Input";
+import { SelectField } from "../../components/SelectField";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { Colors } from "../../theme/colors";
 import { useAuth } from "../../context/AuthContext";
@@ -28,17 +29,45 @@ export function AuthEntryScreen() {
 
   const [fullName, setFullName] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [category, setCategory] = useState("");
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [phone, setPhone] = useState("+994");
+
+  // Fetch categories for Employer registration
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setCategoriesLoading(true);
+        const res = await api.listCategories();
+        const items = Array.isArray(res?.items) ? res.items : [];
+        const out = [];
+        for (const p of items) {
+          if (p?.name) out.push(String(p.name));
+          const children = Array.isArray(p?.children) ? p.children : [];
+          for (const c of children) {
+            if (c?.name) out.push(`↳ ${String(c.name)}`);
+          }
+        }
+        if (alive) setCategoryOptions(out);
+      } catch (e) {
+        // ignore
+      } finally {
+        if (alive) setCategoriesLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   async function submit() {
     if (loading) return;
 
     setLoading(true);
     try {
-      // Store role hint mostly for register flows
       await AsyncStorage.setItem(ROLE_HINT_KEY, role).catch(() => { });
 
       if (mode === MODE.LOGIN) {
@@ -46,7 +75,6 @@ export function AuthEntryScreen() {
           Alert.alert("Xəta", "Email və şifrə daxil edin.");
           return;
         }
-        // roleHint passed as 'role' state but backend usually relies on email lookup
         await signIn({ email, password, roleHint: role });
 
         if (nav.canGoBack()) nav.goBack();
@@ -58,7 +86,6 @@ export function AuthEntryScreen() {
         return;
       }
 
-      // REGISTER
       if (!fullName || !email || !password || !confirmPassword || !phone) {
         Alert.alert("Xəta", "Zəhmət olmasa bütün xanaları doldur.");
         return;
@@ -71,11 +98,16 @@ export function AuthEntryScreen() {
         Alert.alert("Xəta", "İşçi axtaran qeydiyyatı üçün şirkət adı vacibdir.");
         return;
       }
+      if (role === ROLE.SATICI && !category) {
+        Alert.alert("Xəta", "İşçi axtaran qeydiyyatı üçün kateqoriya seçilməlidir.");
+        return;
+      }
 
       const res = await startRegister({
         role,
         fullName,
         companyName: role === ROLE.SATICI ? companyName : undefined,
+        category: role === ROLE.SATICI ? category : undefined,
         email,
         password,
         phone,
@@ -136,12 +168,6 @@ export function AuthEntryScreen() {
                 </Pressable>
               ) : (
                 <Pressable onPress={() => {
-                  // If we can't go back, maybe we should just go to the main screen?
-                  // Or just do nothing if this is the only screen.
-                  // But usually we can go back if we came from somewhere.
-                  // If this is the initial screen, maybe we want a "Skip" button to enter Guest mode?
-                  // Assuming Guest mode is handled by navigating to 'Main' or similar.
-                  // But let's just assume goBack works or we offer a "Hələlik keç" button that tries to go Home.
                   nav.navigate("SeekerTabs"); // Try navigating to main tabs
                 }} style={{ padding: 8, marginLeft: -8 }}>
                   <Text style={{ color: Colors.muted, fontWeight: "700" }}>Hələlik keç</Text>
@@ -199,13 +225,28 @@ export function AuthEntryScreen() {
                 />
 
                 {role === ROLE.SATICI ? (
-                  <Input
-                    label="Şirkət adı"
-                    value={companyName}
-                    onChangeText={setCompanyName}
-                    placeholder="Məs: Asimos LLC"
-                    autoCapitalize="words"
-                  />
+                  <>
+                    <Input
+                      label="Şirkət adı"
+                      value={companyName}
+                      onChangeText={setCompanyName}
+                      placeholder="Məs: Asimos LLC"
+                      autoCapitalize="words"
+                    />
+
+                    <SelectField
+                      label="Fəaliyyət sahəsi (Kateqoriya)"
+                      value={category}
+                      onChange={(v) => {
+                        const raw = String(v || "");
+                        setCategory(raw.startsWith("↳ ") ? raw.slice(2) : raw);
+                      }}
+                      placeholder="Kateqoriya seç"
+                      options={categoryOptions}
+                      loading={categoriesLoading}
+                    />
+                    <View style={{ height: 16 }} />
+                  </>
                 ) : null}
 
                 <Input
@@ -290,7 +331,7 @@ export function AuthEntryScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeScreen>
+    </SafeScreen >
   );
 }
 
