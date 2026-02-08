@@ -13,6 +13,7 @@ import { useToast } from "../../context/ToastContext";
 import { MapPicker } from "../../components/MapPicker";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { registerForPushNotificationsAsync } from "../../utils/pushNotifications";
+import { getDeviceLocationOrNull } from "../../utils/deviceLocation";
 import { api } from "../../api/client";
 
 export function SeekerProfileScreen() {
@@ -161,6 +162,21 @@ export function SeekerProfileScreen() {
       toast.show("Lokasiya yeniləndi", "success");
     } catch (e) {
       toast.show(e.message || "Lokasiya yenilənmədi", "error");
+    } finally {
+      setLocLoading(false);
+    }
+  }
+
+  async function setLocationAuto() {
+    if (locLoading) return;
+    setLocLoading(true);
+    try {
+      const loc = await getDeviceLocationOrNull();
+      if (!loc) throw new Error("Lokasiya əldə edilə bilmədi. GPS aktivdirmi?");
+      await updateLocation(loc);
+      toast.show("Cari lokasiya təyin edildi", "success");
+    } catch (e) {
+      toast.show(e.message || "Lokasiya xətası", "error");
     } finally {
       setLocLoading(false);
     }
@@ -400,7 +416,14 @@ export function SeekerProfileScreen() {
 
             <View style={{ height: 14 }} />
 
-            <PrimaryButton title="Lokasiyanı yenilə" loading={locLoading} onPress={() => setMapOpen(true)} />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <PrimaryButton title="Avtomatik təyin et" loading={locLoading} onPress={setLocationAuto} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <PrimaryButton variant="secondary" title="Xəritədə seç" onPress={() => setMapOpen(true)} />
+              </View>
+            </View>
             <View style={{ height: 10 }} />
             <PrimaryButton variant="secondary" title="Çıxış" onPress={signOut} />
           </Card>

@@ -139,7 +139,7 @@ export const api = {
 
   listJobs: () => request("/jobs"),
   listMyJobs: (createdBy) => request(`/jobs?createdBy=${encodeURIComponent(createdBy)}`),
-  listJobsWithSearch: ({ q, lat, lng, radius_m, daily }) => request(`/jobs${qs({ q, lat, lng, radius_m, daily })}`),
+  listJobsWithSearch: ({ q, lat, lng, radius_m, daily, jobType }) => request(`/jobs${qs({ q, lat, lng, radius_m, daily, jobType })}`),
   getJobById: (id) => request(`/jobs/${encodeURIComponent(String(id))}`),
   createJob: (payload) => request("/jobs", { method: "POST", body: payload }),
   closeJob: (id, { reason } = {}) => request(`/jobs/${encodeURIComponent(String(id))}/close`, { method: "PATCH", body: { reason } }),

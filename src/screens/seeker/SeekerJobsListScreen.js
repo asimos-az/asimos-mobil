@@ -37,6 +37,8 @@ export function SeekerJobsListScreen() {
 
   const [filterOpen, setFilterOpen] = useState(false);
 
+  const [activeTab, setActiveTab] = useState("employer"); // 'employer' | 'seeker'
+
   const [q, setQ] = useState("");
   const [radius, setRadius] = useState(0);
   const [minWage, setMinWage] = useState("");
@@ -133,7 +135,9 @@ export function SeekerJobsListScreen() {
         lat: loc?.lat,
         lng: loc?.lng,
         radius_m: (radius > 0 && loc?.lat && loc?.lng) ? radius : undefined,
+        radius_m: (radius > 0 && loc?.lat && loc?.lng) ? radius : undefined,
         daily: undefined,
+        jobType: activeTab === 'seeker' ? 'seeker' : 'employer',
       });
       setItems(data);
     } catch (e) {
@@ -151,7 +155,10 @@ export function SeekerJobsListScreen() {
     if (!location?.lat || !location?.lng) return;
     didInit.current = true;
     loadList(location);
-  }, [location?.lat, location?.lng]);
+    if (!location?.lat || !location?.lng) return;
+    didInit.current = true;
+    loadList(location);
+  }, [location?.lat, location?.lng, activeTab]);
 
   const hasActiveFilters = !!(q?.trim() || minWage || maxWage || (selectedCategories?.length) || radius > 0);
 
@@ -249,6 +256,33 @@ export function SeekerJobsListScreen() {
           {hasActiveFilters ? <View style={styles.dot} /> : null}
         </Pressable>
       </View>
+
+      <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginBottom: 10, gap: 10 }}>
+        <Pressable
+          style={[styles.tab, activeTab === 'employer' && styles.tabActive]}
+          onPress={() => setActiveTab('employer')}
+        >
+          <Text style={[styles.tabText, activeTab === 'employer' && styles.tabTextActive]}>Vakansiyalar</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.tab, activeTab === 'seeker' && styles.tabActive]}
+          onPress={() => setActiveTab('seeker')}
+        >
+          <Text style={[styles.tabText, activeTab === 'seeker' && styles.tabTextActive]}>İşçi Elanları</Text>
+        </Pressable>
+      </View>
+
+      {activeTab === 'seeker' && (
+        <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
+          <Pressable
+            style={styles.createBtn}
+            onPress={() => navigation.navigate("SeekerCreateAd")}
+          >
+            <Ionicons name="add" size={20} color="#fff" />
+            <Text style={styles.createBtnText}>Elan yerləşdir</Text>
+          </Pressable>
+        </View>
+      )}
 
       <View style={styles.body}>
         <FlatList
@@ -367,5 +401,39 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 15
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: Colors.border
+  },
+  tabActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary
+  },
+  tabText: {
+    fontWeight: '700',
+    color: Colors.text
+  },
+  tabTextActive: {
+    color: '#fff'
+  },
+  createBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#111827',
+    paddingVertical: 12,
+    borderRadius: 16,
+    gap: 8
+  },
+  createBtnText: {
+    color: '#fff',
+    fontWeight: '900',
+    fontSize: 16
   }
 });

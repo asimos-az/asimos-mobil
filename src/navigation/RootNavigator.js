@@ -12,6 +12,7 @@ import { EmployerCreateJobScreen } from "../screens/employer/EmployerCreateJobSc
 import { EmployerNotificationsScreen } from "../screens/employer/EmployerNotificationsScreen";
 import { EmployerMapScreen } from "../screens/employer/EmployerMapScreen";
 import { SeekerMapScreen } from "../screens/seeker/SeekerMapScreen";
+import { SeekerCreateAdScreen } from "../screens/seeker/SeekerCreateAdScreen";
 import { JobDetailScreen } from "../screens/shared/JobDetailScreen";
 import { TermsScreen } from "../screens/shared/TermsScreen";
 import { JobMapScreen } from "../screens/shared/JobMapScreen";
@@ -182,6 +183,7 @@ export function RootNavigator() {
             <Stack.Screen name="CreateJobAlert" component={CreateJobAlertScreen} options={{ title: "Bildiriş Yarat", headerShown: true }} />
             <Stack.Screen name="Terms" component={TermsScreen} />
             <Stack.Screen name="SeekerMap" component={SeekerMapScreen} options={{ presentation: "fullScreenModal", animation: "fade_from_bottom" }} />
+            <Stack.Screen name="SeekerCreateAd" component={SeekerCreateAdScreen} options={{ presentation: "card" }} />
             <Stack.Screen name="JobMap" component={JobMapScreen} options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
           </>
         )}

@@ -12,6 +12,7 @@ export function SeekerMapScreen() {
   const route = useRoute();
   const { jobs = [], userLocation = null } = route.params || {};
   const [loading, setLoading] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(false);
   const webRef = React.useRef(null);
 
   // Live location watcher
@@ -91,6 +92,7 @@ export function SeekerMapScreen() {
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
   <script>
     const jobs = ${jobsData};
     const uLat = ${uLat};
@@ -149,12 +151,32 @@ export function SeekerMapScreen() {
 
     jobs.forEach(j => {
       const m = L.marker([j.lat, j.lng], { icon: jobIcon }).addTo(map);
+      j.marker = m; // Store reference
       boundsArr.push([j.lat, j.lng]);
       
       m.on('click', () => {
         selectJob(j);
       });
     });
+
+    let heatLayer = null;
+    window.toggleHeatmap = function(show) {
+      if(show) {
+        if(!heatLayer) {
+           const points = jobs.map(j => [j.lat, j.lng, 1]);
+           heatLayer = L.heatLayer(points, { radius: 25, blur: 15, maxZoom: 10 }).addTo(map);
+        }
+        // Hide markers when heatmap is on? Optional. Let's keep them or hide them.
+        // Let's toggle markers visibility for cleaner view
+        jobs.forEach(j => j.marker.setOpacity(0));
+      } else {
+        if(heatLayer) {
+          map.removeLayer(heatLayer);
+          heatLayer = null;
+        }
+        jobs.forEach(j => j.marker.setOpacity(1));
+      }
+    };
 
     if(boundsArr.length > 0) {
       map.fitBounds(boundsArr, { padding: [50, 50] });
@@ -209,7 +231,16 @@ export function SeekerMapScreen() {
           <Ionicons name="close-circle" size={32} color={Colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Xəritədə Nəticələr</Text>
-        <View style={{ width: 32 }} />
+        <Pressable
+          onPress={() => {
+            const next = !showHeatmap;
+            setShowHeatmap(next);
+            webRef.current?.injectJavaScript(`window.toggleHeatmap(${next}); true;`);
+          }}
+          style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, padding: 4 })}
+        >
+          <Ionicons name={showHeatmap ? "Flame" : "flame-outline"} size={28} color={showHeatmap ? "#ef4444" : Colors.primary} />
+        </Pressable>
       </View>
 
       <WebView
