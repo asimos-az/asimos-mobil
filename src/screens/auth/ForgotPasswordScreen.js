@@ -14,12 +14,13 @@ export function ForgotPasswordScreen() {
     const nav = useNavigation();
     const { resetPassword } = useAuth(); // Use context wrapper for session handling
 
-    const [step, setStep] = useState(1); // 1: Email, 2: Reset
+    const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: New Password
     const [loading, setLoading] = useState(false);
 
     const [email, setEmail] = useState("");
     const [code, setCode] = useState("");
     const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
 
     async function handleSendOtp() {
         if (!email) {
@@ -38,9 +39,21 @@ export function ForgotPasswordScreen() {
         }
     }
 
+    function handleOtpNext() {
+        if (!code || code.length < 6) {
+            Alert.alert("Xəta", "Zəhmət olmasa düzgün kod daxil edin.");
+            return;
+        }
+        setStep(3);
+    }
+
     async function handleReset() {
-        if (!code || !password) {
-            Alert.alert("Xəta", "Kod və yeni şifrəni daxil edin.");
+        if (!password || !confirmPassword) {
+            Alert.alert("Xəta", "Şifrəni daxil edin.");
+            return;
+        }
+        if (password !== confirmPassword) {
+            Alert.alert("Xəta", "Şifrələr eyni deyil.");
             return;
         }
         setLoading(true);
@@ -76,14 +89,17 @@ export function ForgotPasswordScreen() {
                         </Pressable>
                         <Text style={styles.title}>Şifrə Bərpası</Text>
                         <Text style={styles.subtitle}>
-                            {step === 1
-                                ? "Email ünvanınızı daxil edin, sizə təsdiq kodu göndərək."
-                                : "Emailinizə gələn 6 rəqəmli kodu və yeni şifrənizi daxil edin."}
-                        </Text>
+                            <Text style={styles.subtitle}>
+                                {step === 1
+                                    ? "Email ünvanınızı daxil edin, sizə təsdiq kodu göndərək."
+                                    : step === 2
+                                        ? "Emailinizə gələn 8 rəqəmli kodu daxil edin."
+                                        : "Yeni şifrənizi təyin edin."}
+                            </Text>
                     </View>
 
                     <View style={styles.card}>
-                        {step === 1 ? (
+                        {step === 1 && (
                             <>
                                 <Input
                                     label="Email"
@@ -100,20 +116,42 @@ export function ForgotPasswordScreen() {
                                     loading={loading}
                                 />
                             </>
-                        ) : (
+                        )}
+
+                        {step === 2 && (
                             <>
                                 <Input
                                     label="Təsdiq kodu"
                                     value={code}
                                     onChangeText={setCode}
-                                    placeholder="123456"
+                                    placeholder="12345678"
                                     keyboardType="number-pad"
-                                    maxLength={6}
+                                    maxLength={8}
                                 />
+                                <View style={{ height: 24 }} />
+                                <PrimaryButton
+                                    title="Növbəti"
+                                    onPress={handleOtpNext}
+                                />
+                                <Pressable onPress={() => setStep(1)} style={styles.linkBtn}>
+                                    <Text style={styles.linkText}>Email səhvdir?</Text>
+                                </Pressable>
+                            </>
+                        )}
+
+                        {step === 3 && (
+                            <>
                                 <Input
                                     label="Yeni şifrə"
                                     value={password}
                                     onChangeText={setPassword}
+                                    placeholder="••••••••"
+                                    secureTextEntry
+                                />
+                                <Input
+                                    label="Şifrənin təkrarı"
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
                                     placeholder="••••••••"
                                     secureTextEntry
                                 />
@@ -123,8 +161,8 @@ export function ForgotPasswordScreen() {
                                     onPress={handleReset}
                                     loading={loading}
                                 />
-                                <Pressable onPress={() => setStep(1)} style={styles.linkBtn} disabled={loading}>
-                                    <Text style={styles.linkText}>Email səhvdir?</Text>
+                                <Pressable onPress={() => setStep(2)} style={styles.linkBtn}>
+                                    <Text style={styles.linkText}>Kodu yenidən daxil et</Text>
                                 </Pressable>
                             </>
                         )}
