@@ -36,6 +36,7 @@ export function AuthEntryScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [phone, setPhone] = useState("+994");
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Fetch categories for Employer registration
   React.useEffect(() => {
@@ -282,9 +283,22 @@ export function AuthEntryScreen() {
                   keyboardType="phone-pad"
                 />
 
-                <Text style={styles.help}>
-                  Qeydiyyatdan keçməklə siz <Text style={styles.link} onPress={() => nav.navigate("Terms", { slug: "terms", title: "Qaydalar" })}>Qaydalar və Şərtlər</Text> ilə razılaşırsınız.
-                </Text>
+                <Pressable
+                  onPress={() => setTermsAccepted(!termsAccepted)}
+                  style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 10 }}
+                >
+                  <Ionicons
+                    name={termsAccepted ? "checkbox" : "square-outline"}
+                    size={24}
+                    color={termsAccepted ? Colors.primary : Colors.muted}
+                  />
+                  <Text style={{ flex: 1, color: Colors.muted, fontSize: 13, lineHeight: 18 }}>
+                    <Text style={{ fontWeight: "700", color: Colors.text }}>Qaydalar və Şərtlər</Text> ilə tanış oldum və razıyam.
+                  </Text>
+                </Pressable>
+                <Pressable onPress={() => nav.navigate("Terms", { slug: "terms", title: "Qaydalar" })} style={{ marginLeft: 34, marginTop: 4 }}>
+                  <Text style={{ color: Colors.primary, fontWeight: '700', fontSize: 12, textDecorationLine: 'underline' }}>Qaydaları oxu</Text>
+                </Pressable>
               </>
             ) : (
               <>
@@ -313,6 +327,7 @@ export function AuthEntryScreen() {
             <PrimaryButton
               title={mode === MODE.LOGIN ? "Daxil ol" : "Qeydiyyat"}
               loading={loading}
+              disabled={mode === MODE.REGISTER && !termsAccepted}
               onPress={submit}
             />
 

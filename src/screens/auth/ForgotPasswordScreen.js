@@ -9,10 +9,12 @@ import { PrimaryButton } from "../../components/PrimaryButton";
 import { Colors } from "../../theme/colors";
 import { api } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
+import { useAlert } from "../../context/AlertContext";
 
 export function ForgotPasswordScreen() {
     const nav = useNavigation();
     const { resetPassword } = useAuth(); // Use context wrapper for session handling
+    const { showAlert } = useAlert();
 
     const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: New Password
     const [loading, setLoading] = useState(false);
@@ -24,16 +26,16 @@ export function ForgotPasswordScreen() {
 
     async function handleSendOtp() {
         if (!email) {
-            Alert.alert("Xəta", "Email daxil edin.");
+            showAlert("Xəta", "Email daxil edin.");
             return;
         }
         setLoading(true);
         try {
             await api.forgotPassword(email);
             setStep(2);
-            Alert.alert("Uğurlu", "Təsdiq kodu emailinizə göndərildi.");
+            showAlert("Uğurlu", "Təsdiq kodu emailinizə göndərildi.");
         } catch (e) {
-            Alert.alert("Xəta", e.message);
+            showAlert("Xəta", e.message);
         } finally {
             setLoading(false);
         }
@@ -41,7 +43,7 @@ export function ForgotPasswordScreen() {
 
     function handleOtpNext() {
         if (!code || code.length < 6) {
-            Alert.alert("Xəta", "Zəhmət olmasa düzgün kod daxil edin.");
+            showAlert("Xəta", "Zəhmət olmasa düzgün kod daxil edin.");
             return;
         }
         setStep(3);
@@ -49,11 +51,11 @@ export function ForgotPasswordScreen() {
 
     async function handleReset() {
         if (!password || !confirmPassword) {
-            Alert.alert("Xəta", "Şifrəni daxil edin.");
+            showAlert("Xəta", "Şifrəni daxil edin.");
             return;
         }
         if (password !== confirmPassword) {
-            Alert.alert("Xəta", "Şifrələr eyni deyil.");
+            showAlert("Xəta", "Şifrələr eyni deyil.");
             return;
         }
         setLoading(true);
@@ -61,11 +63,13 @@ export function ForgotPasswordScreen() {
 
             await resetPassword({ email, code, password });
 
-            Alert.alert("Uğurlu", "Şifrəniz yeniləndi və hesabınıza daxil oldunuz.", [
-                { text: "Davam et", onPress: () => nav.navigate("SeekerTabs") }
-            ]);
+            showAlert(
+                "Uğurlu",
+                "Şifrəniz yeniləndi və hesabınıza daxil oldunuz.",
+                [{ text: "Davam et", onPress: () => nav.navigate("SeekerTabs") }]
+            );
         } catch (e) {
-            Alert.alert("Xəta", e.message);
+            showAlert("Xəta", e.message);
         } finally {
             setLoading(false);
         }

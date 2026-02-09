@@ -10,6 +10,7 @@ import { Card } from "../../components/Card";
 import { Colors } from "../../theme/colors";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { useAlert } from "../../context/AlertContext";
 import { MapPicker } from "../../components/MapPicker";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { registerForPushNotificationsAsync } from "../../utils/pushNotifications";
@@ -19,6 +20,7 @@ import { api } from "../../api/client";
 export function SeekerProfileScreen() {
   const navigation = useNavigation();
   const { user, signOut, updateLocation, isSigningOut } = useAuth();
+  const { showAlert } = useAlert();
 
   if (!user) {
     if (isSigningOut) return null;
@@ -425,7 +427,20 @@ export function SeekerProfileScreen() {
               </View>
             </View>
             <View style={{ height: 10 }} />
-            <PrimaryButton variant="secondary" title="Çıxış" onPress={signOut} />
+            <PrimaryButton
+              variant="secondary"
+              title="Çıxış"
+              onPress={() => {
+                showAlert(
+                  "ÇIXIŞ",
+                  "Hesabdan çıxmaq istəyirsən?",
+                  [
+                    { text: "İMTİNA", style: "cancel" },
+                    { text: "ÇIX", style: "destructive", onPress: signOut }
+                  ]
+                );
+              }}
+            />
           </Card>
 
           <View style={{ height: 18 }} />

@@ -3,18 +3,18 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import { Colors } from "../theme/colors";
 import { Ionicons } from "@expo/vector-icons";
 
-export function PrimaryButton({ title, onPress, loading=false, variant="primary", iconName }) {
+export function PrimaryButton({ title, onPress, loading = false, disabled = false, variant = "primary", iconName }) {
   const isPrimary = variant === "primary";
   const isOutline = variant === "outline";
   const isDanger = variant === "danger";
   return (
     <Pressable
-      onPress={loading ? undefined : onPress}
+      onPress={(loading || disabled) ? undefined : onPress}
       style={({ pressed }) => [
         styles.base,
         isPrimary ? styles.primary : isDanger ? styles.danger : isOutline ? styles.outline : styles.secondary,
         pressed && { opacity: 0.85 },
-        loading && { opacity: 0.7 },
+        (loading || disabled) && { opacity: 0.5 },
       ]}
     >
       {loading ? (
