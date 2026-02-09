@@ -24,9 +24,13 @@ export function SeekerNotificationsScreen() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const { signOut } = useAuth(); // Import signOut
+  const { user, signOut } = useAuth(); // Import user
 
   const load = useCallback(async () => {
+    if (!user) {
+      setItems([]);
+      return;
+    }
     try {
       setLoading(true);
       const res = await api.listMyNotifications({ limit: 60, offset: 0 });

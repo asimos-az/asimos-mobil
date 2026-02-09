@@ -263,20 +263,25 @@ export function JobDetailScreen() {
           ) : null}
 
           {job.voen ? <Text style={styles.meta}>VOEN: {job.voen}</Text> : null}
-          {jobLoc?.address ? <Text style={styles.meta}>📍 {jobLoc.address}</Text> : null}
+          {job.voen ? <Text style={styles.meta}>VOEN: {job.voen}</Text> : null}
+          {isAuthed && jobLoc?.address ? <Text style={styles.meta}>📍 {jobLoc.address}</Text> : null}
 
           {typeof job.distanceM === "number" ? <Text style={styles.meta}>Sənə məsafə: {job.distanceM} m</Text> : null}
 
-          <View style={{ height: 14 }} />
-          <Text style={styles.descTitle}>Xəritə</Text>
-          <Text style={styles.mapHint}>Yaşıl: elanın lokasiyası • Mavi: sənin lokasiyan • Böyütmək üçün xəritəyə toxun</Text>
-          <View style={{ height: 10 }} />
+          {isAuthed ? (
+            <>
+              <View style={{ height: 14 }} />
+              <Text style={styles.descTitle}>Xəritə</Text>
+              <Text style={styles.mapHint}>Yaşıl: elanın lokasiyası • Mavi: sənin lokasiyan • Böyütmək üçün xəritəyə toxun</Text>
+              <View style={{ height: 10 }} />
 
-          <Pressable onPress={() => navigation.navigate("JobMap", { job, userLocation: myLoc || userLoc })}>
-            <MapPreview userLocation={myLoc || userLoc} jobLocation={jobLoc} height={240} />
-            {/* Overlay to intercept touches but allow press */}
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'transparent' }} />
-          </Pressable>
+              <Pressable onPress={() => navigation.navigate("JobMap", { job, userLocation: myLoc || userLoc })}>
+                <MapPreview userLocation={myLoc || userLoc} jobLocation={jobLoc} height={240} />
+                {/* Overlay to intercept touches but allow press */}
+                <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'transparent' }} />
+              </Pressable>
+            </>
+          ) : null}
 
           <View style={{ height: 14 }} />
           <Text style={styles.descTitle}>Təsvir</Text>
