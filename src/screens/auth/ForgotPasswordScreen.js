@@ -89,13 +89,12 @@ export function ForgotPasswordScreen() {
                         </Pressable>
                         <Text style={styles.title}>Şifrə Bərpası</Text>
                         <Text style={styles.subtitle}>
-                            <Text style={styles.subtitle}>
-                                {step === 1
-                                    ? "Email ünvanınızı daxil edin, sizə təsdiq kodu göndərək."
-                                    : step === 2
-                                        ? "Emailinizə gələn 8 rəqəmli kodu daxil edin."
-                                        : "Yeni şifrənizi təyin edin."}
-                            </Text>
+                            {step === 1
+                                ? "Email ünvanınızı daxil edin, sizə təsdiq kodu göndərək."
+                                : step === 2
+                                    ? "Emailinizə gələn 8 rəqəmli kodu daxil edin."
+                                    : "Yeni şifrənizi təyin edin."}
+                        </Text>
                     </View>
 
                     <View style={styles.card}>
