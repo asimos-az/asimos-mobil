@@ -158,4 +158,8 @@ export const api = {
   listMyAlerts: () => request("/me/alerts"),
   createAlert: (payload) => request("/me/alerts", { method: "POST", body: payload }),
   deleteAlert: (id) => request(`/me/alerts/${encodeURIComponent(String(id))}`, { method: "DELETE" }),
+
+  listTickets: () => request("/support"),
+  createTicket: (payload) => request("/support", { method: "POST", body: payload }),
+  replyTicket: (id, message) => request(`/support/${encodeURIComponent(String(id))}/reply`, { method: "POST", body: { message } }),
 };

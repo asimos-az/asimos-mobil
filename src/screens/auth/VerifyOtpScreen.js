@@ -10,10 +10,6 @@ import { Colors } from "../../theme/colors";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 
-/**
- * Qeydiyyat zamanı emailə OTP (kod) göndərilir.
- * User 6 rəqəmli kodu daxil edib təsdiqləyir.
- */
 export function VerifyOtpScreen() {
   const nav = useNavigation();
   const route = useRoute();
@@ -34,7 +30,7 @@ export function VerifyOtpScreen() {
 
   const hint = useMemo(() => {
     if (!email) return "";
-    return `OTP kod ${email} ünvanına göndərildi. Adətən 6 rəqəmdir (bəzən 8 ola bilər). (Gəlmirsə Spam/Promotions yoxla)`;
+    return `OTP kod ${email} ünvanına göndərildi. Kod 8 rəqəmlidir. (Gəlmirsə Spam/Promotions yoxla)`;
   }, [email]);
 
   async function onVerify() {
@@ -44,8 +40,8 @@ export function VerifyOtpScreen() {
       return;
     }
     const clean = String(code || "").replace(/\s+/g, "").trim();
-    if (!/^\d{6,8}$/.test(clean)) {
-      toast.show("OTP kod 6 (və ya 8) rəqəmli olmalıdır.", "error");
+    if (!/^\d{8}$/.test(clean)) {
+      toast.show("OTP kod 8 rəqəmli olmalıdır.", "error");
       return;
     }
 
@@ -113,7 +109,7 @@ export function VerifyOtpScreen() {
               label="OTP kod"
               value={code}
               onChangeText={(t) => setCode(String(t || "").replace(/\D+/g, "").slice(0, 8))}
-              placeholder="Məs: 123456"
+              placeholder="12345678"
               keyboardType="number-pad"
               maxLength={8}
               textContentType="oneTimeCode"

@@ -9,7 +9,7 @@ import { PrimaryButton } from "../../components/PrimaryButton";
 import { Colors } from "../../theme/colors";
 import { useAuth } from "../../context/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_BASE_URL } from "../../api/client";
+import { API_BASE_URL, api } from "../../api/client";
 import { Ionicons } from "@expo/vector-icons";
 
 const MODE = { LOGIN: "login", REGISTER: "register" };
@@ -38,7 +38,6 @@ export function AuthEntryScreen() {
   const [phone, setPhone] = useState("+994");
   const [termsAccepted, setTermsAccepted] = useState(false);
 
-  // Fetch categories for Employer registration
   React.useEffect(() => {
     let alive = true;
     (async () => {
@@ -56,7 +55,7 @@ export function AuthEntryScreen() {
         }
         if (alive) setCategoryOptions(out);
       } catch (e) {
-        // ignore
+        console.error("Category fetch error:", e);
       } finally {
         if (alive) setCategoriesLoading(false);
       }
@@ -194,7 +193,6 @@ export function AuthEntryScreen() {
 
           <View style={styles.formCard}>
 
-            {/* Role Selector - Only for Register */}
             {mode === MODE.REGISTER && (
               <View style={styles.roleContainer}>
                 <Pressable
@@ -381,7 +379,7 @@ const styles = StyleSheet.create({
   },
   roleBtn: {
     flex: 1,
-    flexDirection: "row", // Side by side icon + text
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 12,

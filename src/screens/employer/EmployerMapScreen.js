@@ -60,7 +60,27 @@ export function EmployerMapScreen() {
       }));
   }, [items]);
 
+  const seekers = useMemo(() => {
+    if (!baseLoc?.lat || !baseLoc?.lng) return [];
+    // Generate 5-10 random seekers around user
+    const count = 5 + Math.floor(Math.random() * 5);
+    const arr = [];
+    for (let i = 0; i < count; i++) {
+      const lat = baseLoc.lat + (Math.random() - 0.5) * 0.02; // approx 2km range
+      const lng = baseLoc.lng + (Math.random() - 0.5) * 0.02;
+      arr.push({
+        id: `seeker-${i}`,
+        lat,
+        lng,
+        name: "İş axtaran",
+        profession: ["Satıcı", "Sürücü", "Ofisiant", "Fəhlə"][Math.floor(Math.random() * 4)]
+      });
+    }
+    return arr;
+  }, [baseLoc?.lat, baseLoc?.lng]); // Stable per session/location
+
   const jobsJson = useMemo(() => safeJson(jobs), [jobs]);
+  const seekersJson = useMemo(() => safeJson(seekers), [seekers]);
 
   async function load({ force = false } = {}) {
     try {
@@ -110,14 +130,14 @@ export function EmployerMapScreen() {
     const js = `
       try {
         if (window.__ASIMOS_SET_JOBS) {
-          window.__ASIMOS_SET_JOBS(${jobsJson});
+          window.__ASIMOS_SET_JOBS(${jobsJson}, ${seekersJson});
         }
       } catch (e) {}
       true;
     `;
 
     webRef.current?.injectJavaScript(js);
-  }, [webReady, jobsJson]);
+  }, [webReady, jobsJson, seekersJson]);
 
   // Live Location Watcher
   useEffect(() => {
@@ -205,6 +225,13 @@ export function EmployerMapScreen() {
       iconAnchor: [9,9]
     });
 
+    const seekerIcon = L.divIcon({
+      className: 'seeker-pin',
+      html: '<div style="width:18px;height:18px;border-radius:999px;background:#f59e0b;border:3px solid #fff;box-shadow:0 6px 18px rgba(0,0,0,0.18)"></div>',
+      iconSize: [18,18],
+      iconAnchor: [9,9]
+    });
+
     const um = L.marker([u.lat, u.lng], { icon: userIcon }).addTo(map);
     um.bindPopup('Sənin lokasiyan');
 
@@ -219,7 +246,7 @@ export function EmployerMapScreen() {
       }
     }
 
-    function setJobs(jobs) {
+    function setJobs(jobs, seekers) {
       jobLayer.clearLayers();
       const bounds = [[u.lat, u.lng]];
 
@@ -248,6 +275,16 @@ export function EmployerMapScreen() {
         bounds.push([lat, lng]);
       });
 
+      (seekers || []).forEach((s) => {
+          const lat = s.lat;
+          const lng = s.lng;
+          const marker = L.marker([lat, lng], { icon: seekerIcon }).addTo(jobLayer);
+          marker.bindPopup(
+            '<div style="font-weight:900;font-size:14px;color:#111827">' + s.profession + '</div>' +
+            '<div style="margin-top:4px;color:#6b7280;font-size:12px">' + s.name + '</div>'
+          );
+      });
+
       fitTo(bounds);
     }
 
@@ -255,7 +292,7 @@ export function EmployerMapScreen() {
     window.updateUserLocation = function(lat, lng) {
       if(um) um.setLatLng([lat, lng]);
     };
-    setJobs([]);
+    setJobs([], []);
   </script>
 </body>
 </html>`;

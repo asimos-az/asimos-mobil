@@ -372,13 +372,7 @@ export function EmployerProfileScreen() {
             </>
           )}
 
-          <View style={{ height: 14 }} />
-          <PrimaryButton
-            title="Vakansiya yarat"
-            onPress={goCreateJob}
-            iconName="add-circle-outline"
-            variant="primary"
-          />
+
           <View style={{ height: 10 }} />
           <PrimaryButton
             title={locLoading ? "Lokasiya yenilənir..." : "Lokasiyanı yenilə"}
@@ -386,6 +380,13 @@ export function EmployerProfileScreen() {
             onPress={() => setMapOpen(true)}
             iconName="navigate-outline"
             variant="outline"
+          />
+          <View style={{ height: 10 }} />
+          <PrimaryButton
+            title="Dəstək"
+            onPress={() => navigation.navigate("Support")}
+            iconName="chatbubble-ellipses-outline"
+            variant="secondary"
           />
           <View style={{ height: 10 }} />
           <PrimaryButton

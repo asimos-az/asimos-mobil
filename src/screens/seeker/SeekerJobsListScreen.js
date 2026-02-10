@@ -37,7 +37,8 @@ export function SeekerJobsListScreen() {
 
   const [filterOpen, setFilterOpen] = useState(false);
 
-  const [activeTab, setActiveTab] = useState("employer"); // 'employer' | 'seeker'
+  // const [activeTab, setActiveTab] = useState("employer");
+
 
   const [q, setQ] = useState("");
   const [radius, setRadius] = useState(0);
@@ -137,24 +138,25 @@ export function SeekerJobsListScreen() {
         radius_m: (radius > 0 && loc?.lat && loc?.lng) ? radius : undefined,
         radius_m: (radius > 0 && loc?.lat && loc?.lng) ? radius : undefined,
         daily: undefined,
-        jobType: !user ? undefined : (activeTab === 'seeker' ? 'seeker' : 'employer'), // If guest, show all? Or just employer? User said "butun elanarl gorusnun" (all ads visible).
+        jobType: "employer",
+
         // Actually, let's interpret "butun elanarl" as "all ads mixed" or just standard list.
         // If we pass undefined to jobType, the backend defaults to employer only currently (based on previous ViewFile of backend).
         // Let's check backend logic again or just default to 'employer' if undefined on backend.
         // Wait, backend logic: if (jobTypeFilter === "seeker") ... else if (jobTypeFilter === "employer") ... else ... neq "seeker"
-        // So default is employer only.
-        // The user said "sadece listde butun elanarl gorusnun" -> "only all ads should be visible in the list".
-        // If I send nothing, it shows employer ads. If I want ALL (mixed), backend might need adjustment?
-        // But for now, let's assume they want the default view (Employer ads) or maybe just hide the tabs and show 'employer' ads as the main list.
-        // Actually, "butun elanlar" might mean "all available ads". 
-        // Let's stick to showing 'employer' ads by default for guests as that's the main content, or 'employer' + 'seeker' if possible.
-        // Given backend filters: default excludes seeker.
-        // Let's just use 'employer' for now for simplicity as guests usually look for jobs.
-        // Or if user wants "all", I might need to send a special flag or just not filter.
-        // Backend: if jobTypeFilter is empty -> ... else query = query.neq("job_type", "seeker");
-        // So by default it hides seeker ads.
-        // Use 'employer' for now.
-        jobType: user ? (activeTab === 'seeker' ? 'seeker' : 'employer') : 'employer',
+
+
+
+
+
+
+
+
+
+
+
+
+
       });
       setItems(data);
     } catch (e) {
@@ -175,7 +177,8 @@ export function SeekerJobsListScreen() {
     if (!location?.lat || !location?.lng) return;
     didInit.current = true;
     loadList(location);
-  }, [location?.lat, location?.lng, activeTab]);
+  }, [location?.lat, location?.lng]);
+
 
   const hasActiveFilters = !!(q?.trim() || minWage || maxWage || (selectedCategories?.length) || radius > 0);
 
@@ -263,38 +266,9 @@ export function SeekerJobsListScreen() {
         </Pressable>
       </View>
 
-      {
-        user ? (
-          <View style={{ flexDirection: 'row', paddingHorizontal: 16, marginBottom: 10, gap: 10 }}>
-            <Pressable
-              style={[styles.tab, activeTab === 'employer' && styles.tabActive]}
-              onPress={() => setActiveTab('employer')}
-            >
-              <Text style={[styles.tabText, activeTab === 'employer' && styles.tabTextActive]}>Vakansiyalar</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.tab, activeTab === 'seeker' && styles.tabActive]}
-              onPress={() => setActiveTab('seeker')}
-            >
-              <Text style={[styles.tabText, activeTab === 'seeker' && styles.tabTextActive]}>İşçi Elanları</Text>
-            </Pressable>
-          </View>
-        ) : null
-      }
 
-      {
-        user && activeTab === 'seeker' && (
-          <View style={{ paddingHorizontal: 16, marginBottom: 10 }}>
-            <Pressable
-              style={styles.createBtn}
-              onPress={() => navigation.navigate("SeekerCreateAd")}
-            >
-              <Ionicons name="add" size={20} color="#fff" />
-              <Text style={styles.createBtnText}>Elan yerləşdir</Text>
-            </Pressable>
-          </View>
-        )
-      }
+
+
 
       <View style={styles.body}>
         <FlatList

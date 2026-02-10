@@ -26,6 +26,7 @@ import JobAlertsScreen from "../screens/seeker/JobAlertsScreen";
 import CreateJobAlertScreen from "../screens/seeker/CreateJobAlertScreen";
 import { ForgotPasswordScreen } from "../screens/auth/ForgotPasswordScreen";
 import { navigationRef } from "./navigationRef";
+import { SupportScreen } from "../screens/shared/SupportScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -168,6 +169,7 @@ export function RootNavigator() {
             <Stack.Screen name="JobDetail" component={JobDetailScreen} />
             <Stack.Screen name="Terms" component={TermsScreen} />
             <Stack.Screen name="JobMap" component={JobMapScreen} options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
+            <Stack.Screen name="Support" component={SupportScreen} />
           </>
         ) : (
           <>
