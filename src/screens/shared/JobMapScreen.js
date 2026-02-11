@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { StyleSheet, View, Pressable, Text, ActivityIndicator } from "react-native";
+import { StyleSheet, View, Pressable, Text, ActivityIndicator, Linking } from "react-native";
 import { WebView } from "react-native-webview";
 import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
@@ -112,6 +112,22 @@ export function JobMapScreen() {
 </html>`;
     }, [job, userLocation]);
 
+    function openGoogleMaps() {
+        const lat = job?.location?.lat;
+        const lng = job?.location?.lng;
+        if (!lat || !lng) return;
+        const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+        Linking.openURL(url).catch(() => { });
+    }
+
+    function openWaze() {
+        const lat = job?.location?.lat;
+        const lng = job?.location?.lng;
+        if (!lat || !lng) return;
+        const url = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+        Linking.openURL(url).catch(() => { });
+    }
+
     return (
         <SafeScreen>
             <View style={styles.header}>
@@ -132,6 +148,18 @@ export function JobMapScreen() {
                         <ActivityIndicator size="large" color={Colors.primary} />
                     </View>
                 )}
+
+                {/* Navigation Buttons */}
+                <View style={styles.footer}>
+                    <Pressable onPress={openGoogleMaps} style={[styles.navBtn, { backgroundColor: '#4285F4' }]}>
+                        <Ionicons name="map" size={20} color="#fff" />
+                        <Text style={styles.navBtnText}>Google Maps</Text>
+                    </Pressable>
+                    <Pressable onPress={openWaze} style={[styles.navBtn, { backgroundColor: '#33CCFF' }]}>
+                        <Ionicons name="navigate" size={20} color="#fff" />
+                        <Text style={styles.navBtnText}>Waze</Text>
+                    </Pressable>
+                </View>
             </View>
         </SafeScreen>
     );
@@ -160,6 +188,7 @@ const styles = StyleSheet.create({
     body: {
         flex: 1,
         backgroundColor: "#fff",
+        position: 'relative',
     },
     loader: {
         ...StyleSheet.absoluteFillObject,
@@ -167,5 +196,33 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 20
+    },
+    footer: {
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        right: 20,
+        flexDirection: 'row',
+        gap: 12,
+        justifyContent: 'center',
+    },
+    navBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        borderRadius: 12,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 4,
+    },
+    navBtnText: {
+        color: '#fff',
+        fontWeight: '900',
+        fontSize: 14,
     }
 });
