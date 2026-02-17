@@ -21,7 +21,9 @@ export function SeekerTabs() {
     <Tab.Navigator
       screenOptions={{
         tabBarHideOnKeyboard: true,
-        headerShown: false,
+        headerShown: true,
+        headerTitle: "Asimos",
+        headerTitleStyle: { fontSize: 22, fontWeight: "900", color: Colors.primary },
         tabBarShowLabel: false,
         tabBarStyle: [
           styles.tabBar,

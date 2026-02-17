@@ -138,7 +138,7 @@ export function SeekerJobsListScreen() {
         radius_m: (radius > 0 && loc?.lat && loc?.lng) ? radius : undefined,
         radius_m: (radius > 0 && loc?.lat && loc?.lng) ? radius : undefined,
         daily: undefined,
-        jobType: "employer",
+        // jobType: "employer", // Removed to allow backend to decide default (mix)
 
         // Actually, let's interpret "butun elanarl" as "all ads mixed" or just standard list.
         // If we pass undefined to jobType, the backend defaults to employer only currently (based on previous ViewFile of backend).

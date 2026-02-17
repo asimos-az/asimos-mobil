@@ -175,12 +175,7 @@ export function AuthEntryScreen() {
               )}
             </View>
 
-            <Image
-              source={require("../../../assets/logo.jpeg")}
-              style={styles.logo}
-              resizeMode="contain"
-              accessibilityLabel="Asimos logo"
-            />
+            <Text style={styles.brandTitle}>Asimos</Text>
             <Text style={styles.title}>
               {mode === MODE.LOGIN ? "Xoş gəldiniz!" : "Qeydiyyat"}
             </Text>

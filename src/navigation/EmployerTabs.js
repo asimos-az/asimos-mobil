@@ -105,7 +105,12 @@ function EmployerTabBar({ state, navigation }) {
 export function EmployerTabs() {
   return (
     <Tab.Navigator
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        headerShown: true,
+        headerTitle: "Asimos",
+        headerTitleStyle: { fontSize: 22, fontWeight: "900", color: Colors.primary },
+        tabBarShowLabel: false,
+      }}
       tabBar={(props) => <EmployerTabBar {...props} />}
     >
       <Tab.Screen name="EmployerJobs" component={EmployerJobsScreen} />

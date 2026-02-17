@@ -13,6 +13,8 @@ import { SelectField } from "../../components/SelectField";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { MapPicker } from "../../components/MapPicker";
 import { SegmentedControl } from "../../components/SegmentedControl";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Platform } from "react-native";
 
 const MS_DAY = 24 * 60 * 60 * 1000;
 
@@ -32,6 +34,12 @@ export function EmployerCreateJobScreen({ navigation }) {
   const [jobType, setJobType] = useState(null); // "permanent" | "temporary"
   const [durationPreset, setDurationPreset] = useState("1"); // "1" | "3" | "10" | "other"
   const [durationOther, setDurationOther] = useState("");
+
+  const [workType, setWorkType] = useState("full_time"); // full_time | part_time | agreement
+  const [startTime, setStartTime] = useState(new Date().setHours(9, 0, 0, 0));
+  const [endTime, setEndTime] = useState(new Date().setHours(18, 0, 0, 0));
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
 
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [categoryOptions, setCategoryOptions] = useState([]); // string[] (names, flattened)
@@ -146,6 +154,10 @@ export function EmployerCreateJobScreen({ navigation }) {
 
         jobType,
         durationDays: jobType === "temporary" ? durationDays : null,
+
+        work_type: workType,
+        start_time: workType !== "agreement" ? new Date(startTime).toLocaleTimeString("az-AZ", { hour: "2-digit", minute: "2-digit" }) : null,
+        end_time: workType !== "agreement" ? new Date(endTime).toLocaleTimeString("az-AZ", { hour: "2-digit", minute: "2-digit" }) : null,
 
         notifyRadiusM: notifyRadiusM ? Number(notifyRadiusM) : null,
         createdBy: user.id,
@@ -265,6 +277,83 @@ export function EmployerCreateJobScreen({ navigation }) {
             loading={categoriesLoading}
           />
 
+          <View style={{ height: 24 }} />
+
+          <Input
+            label="Maaş (AZN)"
+            value={wage}
+            onChangeText={setWage}
+            placeholder="Məs: 500-700 və ya Razılaşma yolu ilə"
+          />
+
+          <View style={{ height: 24 }} />
+
+          <Text style={styles.label}>İş qrafiki</Text>
+          <SegmentedControl
+            values={["Tam ştat", "Yarım ştat", "Razılaşma"]}
+            selectedIndex={["full_time", "part_time", "agreement"].indexOf(workType)}
+            onChange={(idx) => {
+              const types = ["full_time", "part_time", "agreement"];
+              setWorkType(types[idx]);
+            }}
+          />
+
+          {workType !== "agreement" && (
+            <View style={{ marginTop: 16, flexDirection: "row", gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.label, { fontSize: 13, marginBottom: 6 }]}>Başlama saatı</Text>
+                <Pressable
+                  style={styles.timeBtn}
+                  onPress={() => setShowStartPicker(true)}
+                >
+                  <Text style={styles.timeText}>
+                    {new Date(startTime).toLocaleTimeString("az-AZ", { hour: "2-digit", minute: "2-digit" })}
+                  </Text>
+                  <Ionicons name="time-outline" size={18} color={Colors.primary} />
+                </Pressable>
+                {showStartPicker && (
+                  <DateTimePicker
+                    value={new Date(startTime)}
+                    mode="time"
+                    is24Hour={true}
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={(event, selectedDate) => {
+                      setShowStartPicker(false);
+                      if (selectedDate) setStartTime(selectedDate.getTime());
+                    }}
+                  />
+                )}
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.label, { fontSize: 13, marginBottom: 6 }]}>Bitmə saatı</Text>
+                <Pressable
+                  style={styles.timeBtn}
+                  onPress={() => setShowEndPicker(true)}
+                >
+                  <Text style={styles.timeText}>
+                    {new Date(endTime).toLocaleTimeString("az-AZ", { hour: "2-digit", minute: "2-digit" })}
+                  </Text>
+                  <Ionicons name="time-outline" size={18} color={Colors.primary} />
+                </Pressable>
+                {showEndPicker && (
+                  <DateTimePicker
+                    value={new Date(endTime)}
+                    mode="time"
+                    is24Hour={true}
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={(event, selectedDate) => {
+                      setShowEndPicker(false);
+                      if (selectedDate) setEndTime(selectedDate.getTime());
+                    }}
+                  />
+                )}
+              </View>
+            </View>
+          )}
+
+          <View style={{ height: 24 }} />
+
           <Input
             label="WhatsApp nömrəsi"
             value={whatsapp}
@@ -363,4 +452,20 @@ const styles = StyleSheet.create({
   scroll: { padding: 16, paddingBottom: 160 },
   label: { color: Colors.muted, marginBottom: 6, fontWeight: "900" },
   help: { marginTop: 8, color: Colors.muted, fontSize: 12, fontWeight: "700" },
+  timeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  timeText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: Colors.text,
+  },
 });

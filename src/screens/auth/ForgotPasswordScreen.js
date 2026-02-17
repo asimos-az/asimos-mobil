@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeScreen } from "../../components/SafeScreen";
 import { BackgroundDecor } from "../../components/BackgroundDecor";
 import { Input } from "../../components/Input";
+import { OtpInput } from "../../components/OtpInput";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { Colors } from "../../theme/colors";
 import { api } from "../../api/client";
@@ -91,12 +92,13 @@ export function ForgotPasswordScreen() {
                         <Pressable onPress={() => nav.goBack()} style={styles.backBtn}>
                             <Ionicons name="arrow-back" size={24} color={Colors.text} />
                         </Pressable>
+                        <Text style={styles.brandTitle}>Asimos</Text>
                         <Text style={styles.title}>Şifrə Bərpası</Text>
                         <Text style={styles.subtitle}>
                             {step === 1
                                 ? "Email ünvanınızı daxil edin, sizə təsdiq kodu göndərək."
                                 : step === 2
-                                    ? "Emailinizə gələn 8 rəqəmli kodu daxil edin."
+                                    ? "Emailinizə gələn 6 rəqəmli kodu daxil edin."
                                     : "Yeni şifrənizi təyin edin."}
                         </Text>
                     </View>
@@ -123,13 +125,10 @@ export function ForgotPasswordScreen() {
 
                         {step === 2 && (
                             <>
-                                <Input
-                                    label="Təsdiq kodu"
+                                <OtpInput
+                                    length={6}
                                     value={code}
-                                    onChangeText={setCode}
-                                    placeholder="12345678"
-                                    keyboardType="number-pad"
-                                    maxLength={8}
+                                    onChange={setCode}
                                 />
                                 <View style={{ height: 24 }} />
                                 <PrimaryButton
@@ -183,8 +182,19 @@ const styles = StyleSheet.create({
     header: { marginBottom: 30, alignItems: "center" },
     backBtn: { position: "absolute", left: 0, top: 0, padding: 8, marginLeft: -8, zIndex: 1 },
     title: { fontSize: 24, fontWeight: "900", color: Colors.text, marginBottom: 8, marginTop: 40 },
-    subtitle: { fontSize: 15, color: Colors.muted, textAlign: "center", lineHeight: 22, maxWidth: "85%" },
-
+    subtitle: {
+        fontSize: 14,
+        color: Colors.subtext,
+        marginTop: 8,
+        lineHeight: 20,
+    },
+    brandTitle: {
+        fontSize: 28,
+        fontWeight: "900",
+        color: Colors.primary,
+        marginBottom: 10,
+        letterSpacing: -1,
+    },
     card: {
         backgroundColor: "#fff",
         borderRadius: 24,

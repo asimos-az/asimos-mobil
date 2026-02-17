@@ -6,6 +6,7 @@ import { BackgroundDecor } from "../../components/BackgroundDecor";
 import { Card } from "../../components/Card";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { Input } from "../../components/Input";
+import { OtpInput } from "../../components/OtpInput";
 import { Colors } from "../../theme/colors";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
@@ -30,7 +31,7 @@ export function VerifyOtpScreen() {
 
   const hint = useMemo(() => {
     if (!email) return "";
-    return `OTP kod ${email} ünvanına göndərildi. Kod 8 rəqəmlidir. (Gəlmirsə Spam/Promotions yoxla)`;
+    return `OTP kod ${email} ünvanına göndərildi. Kod 6 rəqəmlidir. (Gəlmirsə Spam/Promotions yoxla)`;
   }, [email]);
 
   async function onVerify() {
@@ -40,8 +41,8 @@ export function VerifyOtpScreen() {
       return;
     }
     const clean = String(code || "").replace(/\s+/g, "").trim();
-    if (!/^\d{8}$/.test(clean)) {
-      toast.show("OTP kod 8 rəqəmli olmalıdır.", "error");
+    if (!/^\d{6,8}$/.test(clean)) {
+      toast.show("OTP kod 6 (və ya 8) rəqəmli olmalıdır.", "error");
       return;
     }
 
@@ -99,22 +100,17 @@ export function VerifyOtpScreen() {
           contentInsetAdjustmentBehavior="always"
           showsVerticalScrollIndicator={false}
         >
-          <Image source={require("../../../assets/logo.jpeg")} style={styles.logo} resizeMode="contain" />
+          <Text style={styles.brandTitle}>Asimos</Text>
           <Card>
             <Text style={styles.title}>OTP təsdiqi</Text>
             {!!hint && <Text style={styles.sub}>{hint}</Text>}
 
             <View style={{ height: 14 }} />
-            <Input
-              label="OTP kod"
+            <View style={{ height: 14 }} />
+            <OtpInput
+              length={6}
               value={code}
-              onChangeText={(t) => setCode(String(t || "").replace(/\D+/g, "").slice(0, 8))}
-              placeholder="12345678"
-              keyboardType="number-pad"
-              maxLength={8}
-              textContentType="oneTimeCode"
-              autoComplete="sms-otp"
-              autoCorrect={false}
+              onChange={setCode}
             />
 
             <View style={{ height: 10 }} />
@@ -145,6 +141,15 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignSelf: "center",
     marginBottom: 14,
+  },
+  brandTitle: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: Colors.primary,
+    alignSelf: "center",
+    marginBottom: 20,
+    marginTop: 10,
+    letterSpacing: -1,
   },
   title: { fontSize: 20, fontWeight: "900", color: Colors.text },
   sub: { marginTop: 8, color: Colors.subtext, lineHeight: 18, fontWeight: "800" },
