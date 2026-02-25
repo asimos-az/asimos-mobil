@@ -59,21 +59,5 @@ target 'Asimos' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
-
-    # Fix for XRSimulator in CFBundleSupportedPlatforms
-    # This removes the invalid platform that causes App Store Connect validation errors
-    installer.pods_project.targets.each do |target|
-      if target.name == 'ReactNativeDependencies'
-        target.build_configurations.each do |config|
-          # Ensure we are not targeting xrsimulator
-        end
-      end
-    end
-
-    # Direct plist patching for existing bundles in Pods
-    Dir.glob("#{installer.sandbox.root}/**/ReactNativeDependencies_glog.bundle/Info.plist").each do |plist|
-      puts "Patching #{plist} to remove CFBundleSupportedPlatforms..."
-      `plutil -remove CFBundleSupportedPlatforms "#{plist}" > /dev/null 2>&1`
-    end
   end
 end

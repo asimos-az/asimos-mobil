@@ -25,6 +25,11 @@ export function SeekerTabs() {
         headerTitle: "Asimos",
         headerTitleStyle: { fontSize: 22, fontWeight: "900", color: Colors.primary },
         tabBarShowLabel: false,
+        tabBarItemStyle: {
+          height: '100%',
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
         tabBarStyle: [
           styles.tabBar,
           {
@@ -114,17 +119,19 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     height: 64,
-    borderRadius: 32,
+    borderRadius: 16, // Reduced radius
     backgroundColor: "#fff",
     borderTopWidth: 0,
-    paddingBottom: 0, // Override default safe area padding often added by generic styles
+    paddingTop: 0,
+    paddingBottom: 0,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 20,
-    elevation: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    elevation: 8,
+    flexDirection: 'row', // Ensure row
+    alignItems: 'center', // Vertical center
+    justifyContent: 'space-around', // Distribute items
   },
   iconWrap: {
     width: 44,

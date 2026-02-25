@@ -4,16 +4,38 @@ import { WebView } from "react-native-webview";
 import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useRoute } from "@react-navigation/native";
-import * as Location from "expo-location";
+import { api } from "../../api/client"; // Add api import
 
 export function SeekerMapScreen() {
   const nav = useNavigation();
   const route = useRoute();
-  const { jobs = [], userLocation = null } = route.params || {};
+  // If jobs passed via params, use them. Otherwise default to empty array and we'll fetch.
+  const initialJobs = route.params?.jobs;
+  const userLocation = route.params?.userLocation || null;
+
+  const [jobs, setJobs] = useState(initialJobs || []);
   const [loading, setLoading] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const webRef = React.useRef(null);
+
+  // Fetch jobs if not provided (e.g. Tab press)
+  React.useEffect(() => {
+    if (!initialJobs) {
+      (async () => {
+        try {
+          const data = await api.listJobsWithSearch({ q: "", radius_m: undefined });
+          setJobs(data);
+        } catch (e) {
+          // silent error or console
+        } finally {
+          setLoading(false);
+        }
+      })();
+    } else {
+      setLoading(false);
+    }
+  }, [initialJobs]);
+
 
   // Live location watcher
   React.useEffect(() => {
@@ -64,7 +86,7 @@ export function SeekerMapScreen() {
     
     /* Custom Info Card */
     #info-card {
-      position: fixed; bottom: 30px; left: 16px; right: 16px;
+      position: fixed; bottom: 110px; left: 16px; right: 16px;
       background: white; padding: 16px; border-radius: 16px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.15);
       z-index: 9999; display: none;

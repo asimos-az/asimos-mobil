@@ -8,7 +8,7 @@
     "icon": "./assets/logo.jpeg",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/logo.jpeg",
+      "image": "./assets/transparent_splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#F6F7FB"
     },
@@ -49,7 +49,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "web": {
       "favicon": "./assets/logo.jpeg"
