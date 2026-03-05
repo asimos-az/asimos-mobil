@@ -15,7 +15,7 @@ export function EmployerJobsScreen() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const [tab, setTab] = useState("my"); // "my" | "all"
+  const [tab, setTab] = useState("my");
   const [allJobs, setAllJobs] = useState([]);
   const [loadingAll, setLoadingAll] = useState(false);
 
@@ -34,7 +34,6 @@ export function EmployerJobsScreen() {
   async function loadAll() {
     try {
       setLoadingAll(true);
-      // Fetch all jobs (empty query = all)
       const data = await api.listJobsWithSearch({ q: "" });
       setAllJobs(data || []);
     } catch (e) {
@@ -55,15 +54,6 @@ export function EmployerJobsScreen() {
     load();
     return unsub;
   }, [navigation]);
-
-  const statusLabel = useMemo(
-    () => ({
-      open: { text: "Aktiv", dot: "#16A34A", chipBg: "#E9FBEF", chipText: "#0E7A37" },
-      pending: { text: "Gözləyir", dot: "#F59E0B", chipBg: "#FEF3C7", chipText: "#D97706" }, // Yellow/Orange
-      closed: { text: "Bağlı", dot: "#DC2626", chipBg: "#FFECEC", chipText: "#B91C1C" },
-    }),
-    []
-  );
 
   async function toggleJob(item) {
     const isClosed = String(item?.status || "open").toLowerCase() === "closed";

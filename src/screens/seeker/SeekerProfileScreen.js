@@ -1,5 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, StyleSheet, Switch, Text, View, Modal, FlatList, TouchableOpacity, ScrollView } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+  Modal,
+  FlatList,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
@@ -21,7 +31,9 @@ export function SeekerProfileScreen() {
   const navigation = useNavigation();
   const { user, signOut, updateLocation, isSigningOut } = useAuth();
   const { showAlert } = useAlert();
+  const toast = useToast();
 
+  // ✅ Guest (login olmayan)
   if (!user) {
     if (isSigningOut) return null;
     return (
@@ -34,15 +46,13 @@ export function SeekerProfileScreen() {
           <Text style={styles.guestSub}>
             Bildirişlər, lokasiya və əlaqə məlumatlarını görmək üçün qeydiyyatdan keç.
           </Text>
-          <PrimaryButton
-            title="Qeydiyyat / Login"
-            onPress={() => navigation.navigate("AuthEntry")}
-          />
+          <PrimaryButton title="Qeydiyyat / Login" onPress={() => navigation.navigate("AuthEntry")} />
         </View>
       </SafeScreen>
     );
   }
 
+  // ✅ States
   const [locLoading, setLocLoading] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
 
@@ -72,14 +82,15 @@ export function SeekerProfileScreen() {
     return parts.map((p) => p[0]?.toUpperCase()).join("") || "A";
   }, [user?.fullName]);
 
+  // ✅ Init notif + sound
   useEffect(() => {
     let alive = true;
+
     (async () => {
       const ENABLED_KEY = "ASIMOS_NOTIF_ENABLED_V2";
       const TOKEN_KEY = "ASIMOS_EXPO_PUSH_TOKEN_V2";
 
       const enabled = await AsyncStorage.getItem(ENABLED_KEY).catch(() => null);
-
       const perm = await Notifications.getPermissionsAsync().catch(() => ({ status: "undetermined" }));
 
       if (perm?.status === "granted") {
@@ -106,14 +117,10 @@ export function SeekerProfileScreen() {
       if (alive) setNotifEnabled(false);
 
       const soundVal = await AsyncStorage.getItem("ASIMOS_NOTIF_SOUND_ENABLED").catch(() => null);
-      if (alive && soundVal !== null) {
-        setSoundEnabled(soundVal === "1");
-      }
+      if (alive && soundVal !== null) setSoundEnabled(soundVal === "1");
 
       const nameVal = await AsyncStorage.getItem("ASIMOS_NOTIF_SOUND_NAME").catch(() => null);
-      if (alive && nameVal) {
-        setSoundName(nameVal);
-      }
+      if (alive && nameVal) setSoundName(nameVal);
     })();
 
     return () => {
@@ -121,6 +128,7 @@ export function SeekerProfileScreen() {
     };
   }, []);
 
+  // ✅ Stats
   useEffect(() => {
     let alive = true;
 
@@ -129,7 +137,12 @@ export function SeekerProfileScreen() {
       try {
         const unreadRes = await api.getUnreadNotificationsCount().catch(() => ({ unread: 0 }));
         const listRes = await api.listMyNotifications({ limit: 200, offset: 0 }).catch(() => []);
-        const items = Array.isArray(listRes?.items) ? listRes.items : Array.isArray(listRes) ? listRes : [];
+        const items = Array.isArray(listRes?.items)
+          ? listRes.items
+          : Array.isArray(listRes)
+            ? listRes
+            : [];
+
         const hasLoc = user?.location?.lat && user?.location?.lng ? 1 : 0;
 
         if (alive) {
@@ -140,7 +153,12 @@ export function SeekerProfileScreen() {
           });
         }
       } catch {
-        if (alive) setStats({ totalNotifs: 0, unread: 0, hasLoc: user?.location?.lat && user?.location?.lng ? 1 : 0 });
+        if (alive)
+          setStats({
+            totalNotifs: 0,
+            unread: 0,
+            hasLoc: user?.location?.lat && user?.location?.lng ? 1 : 0,
+          });
       } finally {
         if (alive) setStatsLoading(false);
       }
@@ -154,8 +172,7 @@ export function SeekerProfileScreen() {
     };
   }, [navigation, user?.location?.lat, user?.location?.lng]);
 
-  const toast = useToast();
-
+  // ✅ Functions
   async function onPickedLocation(loc) {
     if (locLoading) return;
     setLocLoading(true);
@@ -163,7 +180,7 @@ export function SeekerProfileScreen() {
       await updateLocation(loc);
       toast.show("Lokasiya yeniləndi", "success");
     } catch (e) {
-      toast.show(e.message || "Lokasiya yenilənmədi", "error");
+      toast.show(e?.message || "Lokasiya yenilənmədi", "error");
     } finally {
       setLocLoading(false);
     }
@@ -178,7 +195,7 @@ export function SeekerProfileScreen() {
       await updateLocation(loc);
       toast.show("Cari lokasiya təyin edildi", "success");
     } catch (e) {
-      toast.show(e.message || "Lokasiya xətası", "error");
+      toast.show(e?.message || "Lokasiya xətası", "error");
     } finally {
       setLocLoading(false);
     }
@@ -207,7 +224,7 @@ export function SeekerProfileScreen() {
         toast.show("Bildirişlər söndürüldü", "success");
       }
     } catch (e) {
-      toast.show(e.message || "Dəyişiklik alınmadı", "error");
+      toast.show(e?.message || "Dəyişiklik alınmadı", "error");
     } finally {
       setNotifLoading(false);
     }
@@ -219,7 +236,6 @@ export function SeekerProfileScreen() {
     try {
       setSoundEnabled(val);
       await AsyncStorage.setItem("ASIMOS_NOTIF_SOUND_ENABLED", val ? "1" : "0");
-    } catch {
     } finally {
       setSoundLoading(false);
     }
@@ -229,6 +245,13 @@ export function SeekerProfileScreen() {
     setSoundName(item.id);
     setSoundPickerOpen(false);
     await AsyncStorage.setItem("ASIMOS_NOTIF_SOUND_NAME", item.id).catch(() => { });
+  }
+
+  function openPolicy() {
+    navigation.navigate("WebPage", {
+      title: "Qaydalar və Şərtlər",
+      url: "https://www.asimos.az/policy",
+    });
   }
 
   return (
@@ -241,7 +264,12 @@ export function SeekerProfileScreen() {
         onPicked={onPickedLocation}
       />
 
-      <Modal visible={soundPickerOpen} transparent animationType="fade" onRequestClose={() => setSoundPickerOpen(false)}>
+      <Modal
+        visible={soundPickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSoundPickerOpen(false)}
+      >
         <Pressable style={styles.modalOverlay} onPress={() => setSoundPickerOpen(false)}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Səs tonu seçin</Text>
@@ -256,9 +284,7 @@ export function SeekerProfileScreen() {
                   <Text style={[styles.soundText, soundName === item.id && styles.soundTextActive]}>
                     {item.label}
                   </Text>
-                  {soundName === item.id && (
-                    <Ionicons name="checkmark" size={20} color={Colors.primary} />
-                  )}
+                  {soundName === item.id && <Ionicons name="checkmark" size={20} color={Colors.primary} />}
                 </TouchableOpacity>
               )}
             />
@@ -330,7 +356,11 @@ export function SeekerProfileScreen() {
 
             <View style={styles.statsHeader}>
               <Text style={styles.statsTitle}>Statistika</Text>
-              {statsLoading ? <Text style={styles.statsHint}>Yüklənir…</Text> : <Text style={styles.statsHint}>Bu hesab üzrə</Text>}
+              {statsLoading ? (
+                <Text style={styles.statsHint}>Yüklənir…</Text>
+              ) : (
+                <Text style={styles.statsHint}>Bu hesab üzrə</Text>
+              )}
             </View>
 
             <View style={styles.statsGrid}>
@@ -358,7 +388,11 @@ export function SeekerProfileScreen() {
             <View style={styles.toggleRow}>
               <View style={styles.toggleLeft}>
                 <View style={styles.toggleIcon}>
-                  <Ionicons name={notifEnabled ? "notifications-outline" : "notifications-off-outline"} size={18} color={Colors.primary} />
+                  <Ionicons
+                    name={notifEnabled ? "notifications-outline" : "notifications-off-outline"}
+                    size={18}
+                    color={Colors.primary}
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.toggleTitle}>Bildirişlər</Text>
@@ -386,11 +420,7 @@ export function SeekerProfileScreen() {
                 </View>
               </View>
 
-              <Switch
-                value={soundEnabled}
-                onValueChange={toggleSound}
-                disabled={soundLoading}
-              />
+              <Switch value={soundEnabled} onValueChange={toggleSound} disabled={soundLoading} />
             </View>
 
             {soundEnabled && (
@@ -418,7 +448,7 @@ export function SeekerProfileScreen() {
 
             <View style={{ height: 14 }} />
 
-            <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flexDirection: "row", gap: 10 }}>
               <View style={{ flex: 1 }}>
                 <PrimaryButton title="Avtomatik təyin et" loading={locLoading} onPress={setLocationAuto} />
               </View>
@@ -426,19 +456,17 @@ export function SeekerProfileScreen() {
                 <PrimaryButton variant="secondary" title="Xəritədə seç" onPress={() => setMapOpen(true)} />
               </View>
             </View>
+
             <View style={{ height: 10 }} />
+
             <PrimaryButton
               variant="secondary"
               title="Çıxış"
               onPress={() => {
-                showAlert(
-                  "ÇIXIŞ",
-                  "Hesabdan çıxmaq istəyirsən?",
-                  [
-                    { text: "İMTİNA", style: "cancel" },
-                    { text: "ÇIX", style: "destructive", onPress: signOut }
-                  ]
-                );
+                showAlert("ÇIXIŞ", "Hesabdan çıxmaq istəyirsən?", [
+                  { text: "İMTİNA", style: "cancel" },
+                  { text: "ÇIX", style: "destructive", onPress: signOut },
+                ]);
               }}
             />
           </Card>
@@ -467,10 +495,8 @@ export function SeekerProfileScreen() {
 
           <View style={{ height: 10 }} />
 
-          <Pressable
-            onPress={() => navigation.navigate("Terms", { slug: "terms", title: "Qaydalar" })}
-            style={({ pressed }) => [styles.quickBtn, pressed && { opacity: 0.9 }]}
-          >
+          {/* ✅ UPDATED: Qaydalar & Şərtlər -> https://www.asimos.az/policy */}
+          <Pressable onPress={openPolicy} style={({ pressed }) => [styles.quickBtn, pressed && { opacity: 0.9 }]}>
             <Ionicons name="document-text-outline" size={18} color={Colors.primary} />
             <Text style={styles.quickBtnText}>Qaydalar və Şərtlər</Text>
             <Ionicons name="chevron-forward" size={18} color={Colors.muted} />

@@ -5,7 +5,7 @@ import { Colors } from "../theme/colors";
 export function SegmentedControl({ options, value, onChange, style }) {
   return (
     <View style={[styles.wrap, style]}>
-      {options.map((opt) => {
+      {options?.map((opt) => {
         const active = opt.value === value;
         return (
           <Pressable
