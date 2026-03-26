@@ -10,21 +10,21 @@ export function EmployerJobCard({ job, onPress, onToggleStatus, loading, readonl
         open: {
             label: "Aktiv",
             color: "#16A34A",
-            bg: "#DCFCE7",
+            bg: "#F0FDF4",
             borderColor: "#BBF7D0",
-            icon: "checkmark-circle"
+            icon: "checkmark"
         },
         pending: {
             label: "Yoxlanılır",
             color: "#D97706",
-            bg: "#FEF3C7",
-            borderColor: "#FDE68A",
-            icon: "time"
+            bg: "#FEFCE8",
+            borderColor: "#FEF08A",
+            icon: "time-outline"
         },
         closed: {
             label: "Bağlı",
             color: "#DC2626",
-            bg: "#FEE2E2",
+            bg: "#FEF2F2",
             borderColor: "#FECACA",
             icon: "lock-closed"
         },
@@ -35,212 +35,166 @@ export function EmployerJobCard({ job, onPress, onToggleStatus, loading, readonl
     const isClosed = status === "closed";
 
     const wageDisplay = job.wage ? job.wage.replace("AZN", "₼") : "—";
+    const typeLabel = job.category || "Vakansiya";
 
     return (
         <Pressable
             onPress={onPress}
-            style={({ pressed }) => [styles.container, pressed && styles.pressed]}
+            style={({ pressed }) => [styles.wrapper, pressed && styles.pressed]}
         >
-            {/* Header: Title + Status */}
-            <View style={styles.topRow}>
-                <View style={styles.iconBox}>
-                    <Text style={styles.iconText}>{job.title?.charAt(0)?.toUpperCase() || "İ"}</Text>
+            <View style={styles.badgeContainer}>
+                <View style={[styles.statePill, { backgroundColor: currentStatus.bg, borderColor: currentStatus.borderColor }]}>
+                    <Ionicons name={currentStatus.icon} size={14} color={currentStatus.color} />
+                    <Text style={[styles.stateText, { color: currentStatus.color }]}>{currentStatus.label}</Text>
                 </View>
-                <View style={styles.titleCol}>
-                    <Text style={styles.title} numberOfLines={1}>{job.title}</Text>
-                    <View style={styles.statusRow}>
-                        <View style={[styles.statusBadge, { backgroundColor: currentStatus.bg, borderColor: currentStatus.borderColor }]}>
-                            <Ionicons name={currentStatus.icon} size={10} color={currentStatus.color} />
-                            <Text style={[styles.statusText, { color: currentStatus.color }]}>{currentStatus.label}</Text>
-                        </View>
-                        {isDaily && (
-                            <View style={[styles.dailyBadge]}>
-                                <Ionicons name="flash" size={10} color="#fff" />
-                                <Text style={styles.dailyText}>Gündəlik</Text>
-                            </View>
+            </View>
+
+            <View style={styles.card}>
+                <View style={styles.row}>
+                    <Text style={styles.title} numberOfLines={1}>{job.title || "Vakansiya"}</Text>
+                    <Text style={styles.statusText} numberOfLines={1}>
+                        {isDaily ? "Gündəlik iş" : "Elan"}
+                    </Text>
+                </View>
+
+                <View style={styles.rowTopMargin}>
+                    <View style={styles.leftCol}>
+                        <Text style={styles.meta} numberOfLines={1}>{typeLabel}</Text>
+                        {typeof job.notifyRadiusM === "number" && (
+                            <Text style={styles.meta} numberOfLines={1}>{job.notifyRadiusM}m Radius</Text>
                         )}
                     </View>
-                </View>
-            </View>
-
-            {/* Meta Tags */}
-            <View style={styles.tagsRow}>
-                <View style={[styles.tag, { backgroundColor: "#F3F4F6" }]}>
-                    <Text style={[styles.tagText, { color: Colors.subtext }]}>{wageDisplay}</Text>
-                </View>
-
-                {job.category && (
-                    <View style={[styles.tag, { backgroundColor: Colors.primarySoft }]}>
-                        <Text style={[styles.tagText, { color: Colors.primary }]}>{job.category}</Text>
+                    <View style={styles.rightCol}>
+                        <Text style={styles.amount} numberOfLines={1}>{wageDisplay}</Text>
                     </View>
-                )}
-
-                {typeof job.notifyRadiusM === "number" && (
-                    <View style={[styles.tag, { backgroundColor: "#ECFDF5" }]}>
-                        <Ionicons name="radio-outline" size={10} color={Colors.success} style={{ marginRight: 2 }} />
-                        <Text style={[styles.tagText, { color: Colors.success }]}>{job.notifyRadiusM}m Radius</Text>
-                    </View>
-                )}
-            </View>
-
-            {/* Actions Footer */}
-            <View style={styles.footer}>
+                </View>
+                
+                {/* Actions Footer */}
                 {!readonly && (
-                    <Pressable
-                        style={[styles.actionBtn, isClosed ? styles.btnReopen : styles.btnClose]}
-                        onPress={() => onToggleStatus(job)}
-                        disabled={loading}
-                    >
-                        {isClosed ? (
-                            <>
-                                <Ionicons name="refresh" size={16} color="#16A34A" />
-                                <Text style={[styles.actionText, { color: "#16A34A" }]}>Elanı Aç</Text>
-                            </>
-                        ) : (
-                            <>
-                                <Ionicons name="lock-closed" size={16} color="#DC2626" />
-                                <Text style={[styles.actionText, { color: "#DC2626" }]}>Elanı Bağla</Text>
-                            </>
-                        )}
-                    </Pressable>
+                    <View style={styles.footer}>
+                        <Pressable
+                            style={[styles.actionBtn, isClosed ? styles.btnReopen : styles.btnClose]}
+                            onPress={() => onToggleStatus(job)}
+                            disabled={loading}
+                        >
+                            {isClosed ? (
+                                <>
+                                    <Ionicons name="refresh" size={14} color="#16A34A" />
+                                    <Text style={[styles.actionText, { color: "#16A34A" }]}>Elanı Aç</Text>
+                                </>
+                            ) : (
+                                <>
+                                    <Ionicons name="lock-closed" size={14} color="#DC2626" />
+                                    <Text style={[styles.actionText, { color: "#DC2626" }]}>Elanı Bağla</Text>
+                                </>
+                            )}
+                        </Pressable>
+                    </View>
                 )}
-
-                <View style={styles.viewBtn}>
-                    <Text style={styles.viewText}>Bax</Text>
-                    <Ionicons name="chevron-forward" size={14} color={Colors.muted} />
-                </View>
             </View>
         </Pressable>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        backgroundColor: "#fff",
-        borderRadius: 24,
-        marginBottom: 16,
-        padding: 16,
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.1,
-        shadowRadius: 24,
-        elevation: 8,
-        borderWidth: 1,
-        borderColor: "#F1F5F9",
+    wrapper: {
+        marginBottom: 20,
     },
     pressed: {
-        transform: [{ scale: 0.99 }],
-        opacity: 0.95,
+        opacity: 0.7,
     },
-    topRow: {
+    badgeContainer: {
+        marginBottom: -12,
+        paddingHorizontal: 16,
+        zIndex: 10,
+    },
+    statePill: {
+        alignSelf: "flex-start",
         flexDirection: "row",
         alignItems: "center",
-        marginBottom: 14,
-    },
-    iconBox: {
-        width: 48,
-        height: 48,
-        borderRadius: 16,
-        backgroundColor: Colors.bg,
-        alignItems: "center",
-        justifyContent: "center",
-        marginRight: 12,
-    },
-    iconText: {
-        fontSize: 20,
-        fontWeight: "900",
-        color: Colors.primary,
-    },
-    titleCol: {
-        flex: 1,
-        justifyContent: "center",
-    },
-    title: {
-        fontSize: 17,
-        fontWeight: "800",
-        color: Colors.text,
-        marginBottom: 6,
-    },
-    statusRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-    },
-    statusBadge: {
-        flexDirection: "row",
-        alignItems: "center",
+        gap: 4,
+        borderRadius: 12,
+        paddingHorizontal: 10,
         paddingVertical: 4,
-        paddingHorizontal: 8,
-        borderRadius: 8,
         borderWidth: 1,
-        gap: 4,
     },
-    statusText: {
-        fontSize: 11,
-        fontWeight: "800",
+    stateText: {
+        fontSize: 13,
+        fontWeight: "600",
     },
-    dailyBadge: {
+    card: {
+        backgroundColor: "#FFFFFF",
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: "#F3F4F6",
+        padding: 18,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    row: {
         flexDirection: "row",
+        justifyContent: "space-between",
         alignItems: "center",
-        backgroundColor: "#F59E0B",
-        paddingVertical: 4,
-        paddingHorizontal: 8,
-        borderRadius: 8,
-        gap: 4,
-    },
-    dailyText: {
-        color: "#fff",
-        fontSize: 11,
-        fontWeight: "800",
-    },
-    tagsRow: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 8,
         marginBottom: 16,
     },
-    tag: {
+    rowTopMargin: {
         flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 6,
-        paddingHorizontal: 10,
-        borderRadius: 10,
+        justifyContent: "space-between",
+        alignItems: "flex-end",
     },
-    tagText: {
-        fontSize: 12,
+    leftCol: {
+        flex: 1,
+        gap: 4,
+    },
+    rightCol: {
+        marginLeft: 12,
+        alignItems: "flex-end",
+    },
+    title: {
+        fontSize: 16,
+        fontWeight: "600",
+        color: "#111827",
+        flex: 1,
+        marginRight: 12,
+    },
+    statusText: {
+        fontSize: 13,
+        color: "#4B5563",
+        fontWeight: "400",
+    },
+    meta: {
+        fontSize: 14,
+        color: "#6B7280",
+        fontWeight: "400",
+    },
+    amount: {
+        fontSize: 16,
         fontWeight: "700",
+        color: "#111827",
     },
     footer: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
+        marginTop: 16,
+        paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: "#F1F5F9",
-        paddingTop: 12,
+        borderTopColor: "#F3F4F6",
+        flexDirection: "row",
+        justifyContent: "flex-end",
     },
     actionBtn: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 6,
-        paddingVertical: 8,
+        gap: 4,
+        paddingVertical: 6,
         paddingHorizontal: 12,
-        borderRadius: 12,
-        backgroundColor: "#F3F4F6",
+        borderRadius: 8,
     },
-    btnClose: { backgroundColor: "#FEE2E2" },
-    btnReopen: { backgroundColor: "#DCFCE7" },
+    btnClose: { backgroundColor: "#FEF2F2" },
+    btnReopen: { backgroundColor: "#F0FDF4" },
     actionText: {
         fontSize: 13,
-        fontWeight: "700",
-    },
-    viewBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 2,
-    },
-    viewText: {
-        fontSize: 13,
         fontWeight: "600",
-        color: Colors.muted,
     },
 });

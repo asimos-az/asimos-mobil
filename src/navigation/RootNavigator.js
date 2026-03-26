@@ -27,12 +27,14 @@ import CreateJobAlertScreen from "../screens/seeker/CreateJobAlertScreen";
 import { ForgotPasswordScreen } from "../screens/auth/ForgotPasswordScreen";
 import { navigationRef } from "./navigationRef";
 import { SupportScreen } from "../screens/shared/SupportScreen";
+import { WebPageScreen } from "../screens/shared/WebPageScreen";
 
 const Stack = createNativeStackNavigator();
 
 export function RootNavigator() {
   const { booting, user } = useAuth();
-  const [showSplash, setShowSplash] = React.useState(true);
+  const [showSplash, React_useState] = React.useState(true);
+  const setShowSplash = React_useState;
 
   const isAuthed = !!user;
   const role = user?.role;
@@ -154,6 +156,7 @@ export function RootNavigator() {
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ presentation: "modal" }} />
             <Stack.Screen name="Terms" component={TermsScreen} options={{ presentation: "card" }} />
             <Stack.Screen name="JobMap" component={JobMapScreen} options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
+            <Stack.Screen name="WebPage" component={WebPageScreen} options={({ route }) => ({ title: route.params?.title || "", headerShown: true, presentation: "modal" })} />
           </>
         ) : role === "employer" ? (
           <>
@@ -170,6 +173,7 @@ export function RootNavigator() {
             <Stack.Screen name="Terms" component={TermsScreen} />
             <Stack.Screen name="JobMap" component={JobMapScreen} options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
             <Stack.Screen name="Support" component={SupportScreen} />
+            <Stack.Screen name="WebPage" component={WebPageScreen} options={({ route }) => ({ title: route.params?.title || "", headerShown: true, presentation: "modal" })} />
           </>
         ) : (
           <>
@@ -187,6 +191,8 @@ export function RootNavigator() {
             <Stack.Screen name="SeekerMap" component={SeekerMapScreen} options={{ presentation: "fullScreenModal", animation: "fade_from_bottom" }} />
             <Stack.Screen name="SeekerCreateAd" component={SeekerCreateAdScreen} options={{ presentation: "card" }} />
             <Stack.Screen name="JobMap" component={JobMapScreen} options={{ presentation: "fullScreenModal", animation: "slide_from_bottom" }} />
+            <Stack.Screen name="Support" component={SupportScreen} />
+            <Stack.Screen name="WebPage" component={WebPageScreen} options={({ route }) => ({ title: route.params?.title || "", headerShown: true, presentation: "modal" })} />
           </>
         )}
       </Stack.Navigator>

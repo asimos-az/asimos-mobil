@@ -1,29 +1,45 @@
-import React, { useEffect, useState } from "react";
-import { FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useState, useRef } from "react";
+import { FlatList, KeyboardAvoidingView, Platform, Pressable, Text, View, TextInput, Alert, ScrollView } from "react-native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { api } from "../../api/client";
+import { useAuth } from "../../context/AuthContext";
 import { Input } from "../../components/Input";
 import { PrimaryButton } from "../../components/PrimaryButton";
-import { Card } from "../../components/Card";
 import { useToast } from "../../context/ToastContext";
 import { SelectField } from "../../components/SelectField";
+import { styles } from "./SupportScreen.styles";
 
-const CATEGORIES = [
+const EMPLOYER_CATEGORIES = [
     "Elan yükləyə bilmirəm",
-    "Hesab ilə bağlı problem",
+    "Namizədlərlə əlaqə problemi",
     "Ödəniş problemi",
+    "Hesab ilə bağlı problem",
+    "Təklif və İradlar",
+    "Digər"
+];
+
+const SEEKER_CATEGORIES = [
+    "İşə müraciət edə bilmirəm",
+    "Profilimi tamamlaya bilmirəm",
+    "Hesab ilə bağlı problem",
+    "Təklif və İradlar",
     "Digər"
 ];
 
 export function SupportScreen() {
     const navigation = useNavigation();
+    const { user } = useAuth();
     const toast = useToast();
     const [mode, setMode] = useState("list"); // list, create, detail
     const [tickets, setTickets] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+
+    const isEmployer = user?.role === "employer";
+    const currentCategories = isEmployer ? EMPLOYER_CATEGORIES : SEEKER_CATEGORIES;
 
     // Create state
     const [cat, setCat] = useState("");
@@ -31,23 +47,38 @@ export function SupportScreen() {
     const [creating, setCreating] = useState(false);
 
     // Detail state
+    const flatListRef = useRef(null);
     const [activeTicket, setActiveTicket] = useState(null);
     const [replyMsg, setReplyMsg] = useState("");
     const [replying, setReplying] = useState(false);
 
     useEffect(() => {
         loadTickets();
+        
+        // Simple polling for a real-time chat feel
+        const interval = setInterval(() => {
+            if (!loading) loadTickets(true);
+        }, 3000);
+        return () => clearInterval(interval);
     }, []);
 
-    async function loadTickets() {
+    async function loadTickets(silent = false) {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const res = await api.listTickets();
-            if (res?.items) setTickets(res.items);
+            if (res?.items) {
+                setTickets(res.items);
+                // If we are viewing an active ticket, update it with fresh data
+                setActiveTicket(prev => {
+                    if (!prev) return null;
+                    const fresh = res.items.find(t => t.id === prev.id);
+                    return fresh || prev;
+                });
+            }
         } catch (e) {
             // ignore
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }
 
@@ -55,6 +86,10 @@ export function SupportScreen() {
         if (!cat && !msg) return;
         if (!msg) {
             toast.show("Mesaj yazın", "error");
+            return;
+        }
+        if (!cat) {
+            toast.show("Mövzu seçin", "error");
             return;
         }
         try {
@@ -73,17 +108,17 @@ export function SupportScreen() {
     }
 
     async function sendReply() {
-        if (!replyMsg) return;
+        const textToP = replyMsg.trim();
+        if (!textToP) return;
         try {
             setReplying(true);
-            await api.replyTicket(activeTicket.id, replyMsg);
-            toast.show("Cavab göndərildi", "success");
+            await api.replyTicket(activeTicket.id, textToP);
             setReplyMsg("");
 
             // Update local state optimistic
             const newMsg = {
                 id: Math.random(),
-                message: replyMsg,
+                message: textToP,
                 created_at: new Date().toISOString(),
                 sender_id: "me", // simplified
                 is_admin: false
@@ -94,7 +129,12 @@ export function SupportScreen() {
             updated.support_messages.push(newMsg);
             setActiveTicket(updated);
 
-            loadTickets(); // fresh sync
+            // Fetch latest to stay synced
+            loadTickets();
+            // Scroll to bottom
+            setTimeout(() => {
+                flatListRef.current?.scrollToEnd({ animated: true });
+            }, 100);
         } catch (e) {
             toast.show(e.message, "error");
         } finally {
@@ -116,18 +156,49 @@ export function SupportScreen() {
             >
                 <View style={styles.row}>
                     <Text style={styles.subject}>{item.subject}</Text>
-                    {isReplied && <View style={styles.badge}><Text style={styles.badgeText}>Cavab var</Text></View>}
-                    {isClosed && <View style={[styles.badge, styles.badgeClosed]}><Text style={styles.badgeText}>Bağlı</Text></View>}
+                    {isReplied && <View style={[styles.badge, styles.badgeRepliedBg]}><Text style={[styles.badgeText, styles.badgeRepliedText]}>Cavab var</Text></View>}
+                    {isClosed && <View style={[styles.badge, styles.badgeClosedBg]}><Text style={[styles.badgeText, styles.badgeClosedText]}>Bağlı</Text></View>}
+                    {!isClosed && !isReplied && <View style={[styles.badge, styles.badgeOpenBg]}><Text style={[styles.badgeText, styles.badgeOpenText]}>Açıq</Text></View>}
                 </View>
                 <Text style={styles.snippet} numberOfLines={2}>{item.message}</Text>
-                <Text style={styles.date}>{new Date(item.created_at).toLocaleDateString()}</Text>
+                <View style={styles.footerRow}>
+                    <Text style={styles.date}>{new Date(item.created_at).toLocaleDateString("az-AZ")}</Text>
+                    <Ionicons name="chevron-forward" size={16} color={Colors.muted} />
+                </View>
             </Pressable>
+        );
+    }
+
+    async function handleDeleteTicket() {
+        Alert.alert(
+            "Bileti Sil",
+            "Bu müraciəti qalıcı olaraq silmək istədiyinizə əminsiniz?",
+            [
+                { text: "Ləğv et", style: "cancel" },
+                {
+                    text: "Sil", 
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            setDeleting(true);
+                            await api.deleteTicket(activeTicket.id);
+                            toast.show("Müraciət silindi", "success");
+                            setMode("list");
+                            loadTickets();
+                        } catch (e) {
+                            toast.show(e.message, "error");
+                        } finally {
+                            setDeleting(false);
+                        }
+                    }
+                }
+            ]
         );
     }
 
     if (mode === "create") {
         return (
-            <SafeScreen>
+            <SafeScreen style={styles.safeArea}>
                 <View style={styles.header}>
                     <Pressable onPress={() => setMode("list")} style={styles.backBtn}>
                         <Ionicons name="chevron-back" size={24} color={Colors.text} />
@@ -135,111 +206,151 @@ export function SupportScreen() {
                     <Text style={styles.title}>Yeni Müraciət</Text>
                     <View style={{ width: 40 }} />
                 </View>
-                <View style={styles.content}>
-                    <SelectField
-                        label="Mövzu"
-                        options={CATEGORIES}
-                        value={cat}
-                        onChange={setCat}
-                        placeholder="Seçin"
-                    />
-                    <Input
-                        label="Mesajınız"
-                        value={msg}
-                        onChangeText={setMsg}
-                        multiline
-                        numberOfLines={6}
-                        placeholder="Problemi ətraflı təsvir edin..."
-                    />
-                    <View style={{ height: 20 }} />
-                    <PrimaryButton title="Göndər" onPress={sendTicket} loading={creating} />
-                </View>
+                <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+                    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+                        <SelectField
+                            label="Mövzu"
+                            options={currentCategories}
+                            value={cat}
+                            onChange={setCat}
+                            placeholder="Mövzunu seçin"
+                        />
+                        <View style={{ height: 16 }} />
+                        <Input
+                            label="Mesajınız"
+                            value={msg}
+                            onChangeText={setMsg}
+                            multiline
+                            numberOfLines={6}
+                            placeholder="Problemi ətraflı təsvir edin..."
+                            style={{ height: 120, textAlignVertical: 'top', paddingTop: 16 }}
+                        />
+                        <View style={{ height: 32 }} />
+                        <PrimaryButton title="Müraciəti Göndər" onPress={sendTicket} loading={creating} />
+                    </ScrollView>
+                </KeyboardAvoidingView>
             </SafeScreen>
         );
     }
 
     if (mode === "detail" && activeTicket) {
         const msgs = activeTicket.support_messages || [];
-        // sort by date just in case
+        // sort by date ascending
         msgs.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
         return (
-            <SafeScreen>
+            <SafeScreen style={styles.safeArea}>
                 <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
                     <View style={styles.header}>
                         <Pressable onPress={() => setMode("list")} style={styles.backBtn}>
                             <Ionicons name="chevron-back" size={24} color={Colors.text} />
                         </Pressable>
-                        <Text style={styles.title}>Müraciət #{activeTicket.id.slice(0, 4)}</Text>
-                        <View style={{ width: 40 }} />
+                        <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+                            <View style={{width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981'}} />
+                            <Text style={styles.title}>Adminlə Əlaqə</Text>
+                        </View>
+                        <Pressable onPress={handleDeleteTicket} disabled={deleting} style={{ width: 40, alignItems: 'flex-end' }}>
+                            <Ionicons name="trash-outline" size={24} color={Colors.error || "red"} style={{ opacity: deleting ? 0.5 : 1 }} />
+                        </Pressable>
                     </View>
 
                     <FlatList
+                        ref={flatListRef}
                         data={msgs}
                         keyExtractor={(m) => String(m.id)}
                         contentContainerStyle={{ padding: 16, paddingBottom: 20 }}
+                        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
                         renderItem={({ item }) => {
                             const isAdmin = item.is_admin;
                             return (
                                 <View style={[styles.msgBox, isAdmin ? styles.msgAdmin : styles.msgUser]}>
+                                    {isAdmin && (
+                                        <View style={{flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4}}>
+                                            <Ionicons name="headset" size={12} color={Colors.primary} />
+                                            <Text style={{fontSize: 11, fontWeight: '800', color: Colors.primary}}>ASIMOS DƏSTƏK</Text>
+                                        </View>
+                                    )}
                                     <Text style={[styles.msgText, isAdmin ? styles.msgTextAdmin : styles.msgTextUser]}>{item.message}</Text>
-                                    <Text style={[styles.msgDate, isAdmin ? styles.msgDateAdmin : null]}>
-                                        {new Date(item.created_at).toLocaleString()}
-                                    </Text>
+                                    <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 6, gap: 4}}>
+                                        <Text style={[styles.msgDate, isAdmin ? styles.msgDateAdmin : styles.msgDateUser]}>
+                                            {new Date(item.created_at).toLocaleTimeString("az-AZ", {hour: '2-digit', minute:'2-digit'})}
+                                        </Text>
+                                        {!isAdmin && <Ionicons name="checkmark-done" size={14} color="rgba(0,0,0,0.4)" />}
+                                    </View>
                                 </View>
                             );
                         }}
                         ListHeaderComponent={
-                            <View style={{ marginBottom: 20, padding: 16, backgroundColor: Colors.primarySoft, borderRadius: 12 }}>
-                                <Text style={{ fontWeight: '900', color: Colors.primary, marginBottom: 4 }}>{activeTicket.subject}</Text>
-                                <Text style={{ color: Colors.text }}>STATUS: {activeTicket.status.toUpperCase()}</Text>
+                            <View style={styles.ticketInfoBanner}>
+                                <Text style={styles.ticketInfoTitle}>{activeTicket.subject}</Text>
+                                <View style={styles.ticketInfoStatusRow}>
+                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeTicket.status === 'closed' ? Colors.muted : Colors.primary }} />
+                                    <Text style={styles.ticketInfoStatusText}>
+                                        {activeTicket.status === 'closed' ? "BAĞLANDI" : "AÇIQ"}
+                                    </Text>
+                                </View>
                             </View>
                         }
                     />
 
-                    <View style={styles.chatInput}>
-                        <Input
-                            value={replyMsg}
-                            onChangeText={setReplyMsg}
-                            placeholder="Cavab yazın..."
-                            style={{ flex: 1 }}
-                        />
-                        <Pressable onPress={sendReply} disabled={replying || !replyMsg} style={styles.sendBtn}>
-                            <Ionicons name="send" size={20} color="#fff" />
-                        </Pressable>
-                    </View>
+                    {activeTicket.status !== 'closed' ? (
+                        <View style={styles.chatInputWrap}>
+                            <TextInput
+                                value={replyMsg}
+                                onChangeText={setReplyMsg}
+                                placeholder="Mesaj yazın..."
+                                style={styles.inputField}
+                                multiline
+                                maxHeight={100}
+                                placeholderTextColor={Colors.muted}
+                            />
+                            <Pressable 
+                                onPress={sendReply} 
+                                disabled={replying || !replyMsg.trim()} 
+                                style={[styles.sendBtn, (!replyMsg.trim() || replying) && styles.sendBtnDisabled]}
+                            >
+                                <Ionicons name="send" size={18} color={replyMsg.trim() ? "#fff" : Colors.muted} style={{ marginLeft: 2 }} />
+                            </Pressable>
+                        </View>
+                    ) : (
+                        <View style={{ padding: 16, alignItems: 'center', borderTopWidth: 1, borderColor: Colors.border }}>
+                            <Text style={{ color: Colors.muted, fontWeight: '600' }}>Bu müraciət artıq bağlanıb.</Text>
+                        </View>
+                    )}
                 </KeyboardAvoidingView>
             </SafeScreen>
         );
     }
 
     return (
-        <SafeScreen>
+        <SafeScreen style={styles.safeArea}>
             <View style={styles.header}>
                 <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
                     <Ionicons name="chevron-back" size={24} color={Colors.text} />
                 </Pressable>
                 <Text style={styles.title}>Dəstək</Text>
                 <Pressable onPress={() => setMode("create")} style={styles.addBtn}>
-                    <Ionicons name="add" size={24} color={Colors.primary} />
+                    <Ionicons name="add-circle" size={26} color={Colors.primary} />
                 </Pressable>
             </View>
 
             <FlatList
                 data={tickets}
                 keyExtractor={(t) => t.id}
-                contentContainerStyle={{ padding: 16 }}
+                contentContainerStyle={styles.listContent}
                 refreshing={loading}
                 onRefresh={loadTickets}
                 renderItem={renderItem}
                 ListEmptyComponent={
-                    <View style={{ marginTop: 50, alignItems: 'center' }}>
-                        <Text style={{ color: Colors.muted }}>Müraciət yoxdur</Text>
+                    <View style={styles.emptyWrapper}>
+                        <View style={styles.emptyIcon}>
+                            <Ionicons name="chatbubbles-outline" size={36} color={Colors.muted} />
+                        </View>
+                        <Text style={styles.emptyTitle}>Sualınız var?</Text>
+                        <Text style={styles.emptyDesc}>Bizə yazın, ən qısa zamanda cavablandıraq.</Text>
                         <PrimaryButton
-                            title="Yeni müraciət yarat"
+                            title="+ Yeni Müraciət"
                             onPress={() => setMode("create")}
-                            variant="outline"
-                            style={{ marginTop: 20 }}
                         />
                     </View>
                 }
@@ -247,77 +358,3 @@ export function SupportScreen() {
         </SafeScreen>
     );
 }
-
-const styles = StyleSheet.create({
-    header: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
-        backgroundColor: Colors.bg,
-    },
-    backBtn: { padding: 8, marginLeft: -8 },
-    title: { fontSize: 18, fontWeight: "900", color: Colors.text },
-    addBtn: { padding: 8, marginRight: -8 },
-    content: { padding: 16 },
-
-    card: {
-        backgroundColor: "#fff",
-        padding: 16,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: Colors.border,
-        marginBottom: 12,
-    },
-    row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
-    subject: { fontWeight: "900", color: Colors.text, fontSize: 16, flex: 1 },
-    snippet: { color: Colors.text, fontSize: 14, lineHeight: 20 },
-    date: { marginTop: 8, color: Colors.muted, fontSize: 12 },
-
-    badge: { backgroundColor: "#DEF7EC", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-    badgeText: { color: "#03543F", fontSize: 10, fontWeight: "900" },
-    badgeClosed: { backgroundColor: Colors.bg, },
-
-    msgBox: {
-        maxWidth: "85%",
-        padding: 12,
-        borderRadius: 16,
-        marginBottom: 10,
-    },
-    msgUser: {
-        alignSelf: "flex-end",
-        backgroundColor: Colors.primary,
-        borderBottomRightRadius: 4,
-    },
-    msgAdmin: {
-        alignSelf: "flex-start",
-        backgroundColor: "#E5E7EB",
-        borderBottomLeftRadius: 4,
-    },
-    msgText: { fontSize: 15, lineHeight: 22 },
-    msgTextUser: { color: "#fff" },
-    msgTextAdmin: { color: Colors.text },
-    msgDate: { marginTop: 4, fontSize: 10, color: "rgba(255,255,255,0.7)", alignSelf: "flex-end" },
-    msgDateAdmin: { color: Colors.muted },
-
-    chatInput: {
-        padding: 12,
-        borderTopWidth: 1,
-        borderColor: Colors.border,
-        flexDirection: "row",
-        gap: 10,
-        alignItems: "center",
-        backgroundColor: "#fff"
-    },
-    sendBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: Colors.primary,
-        alignItems: "center",
-        justifyContent: "center",
-    }
-});

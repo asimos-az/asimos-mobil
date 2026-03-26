@@ -1,180 +1,149 @@
 import React from "react";
-import { StyleSheet, Text, View, Pressable, Platform } from "react-native";
+import { StyleSheet, Text, View, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../theme/colors";
 
+function formatDistance(distanceM) {
+  if (typeof distanceM !== "number") return null;
+  return distanceM > 1000 ? `${(distanceM / 1000).toFixed(1)} km` : `${distanceM} m`;
+}
+
 export function JobCard({ job, onPress, showDailyBadge = true }) {
-    const isDaily = job.isDaily;
+  const isDaily = !!job?.isDaily;
+  const wageDisplay = job?.wage ? String(job.wage).replace("AZN", "₼") : "Razılaşma ilə";
+  const distDisplay = formatDistance(job?.distanceM);
+  const companyLabel = job?.company || "Asimos İşəgötürən";
+  const typeLabel = job?.category || "Vakansiya";
 
-    const wageDisplay = job.wage ? job.wage.replace("AZN", "₼") : "—";
-
-    const distDisplay = typeof job.distanceM === "number"
-        ? (job.distanceM > 1000 ? `${(job.distanceM / 1000).toFixed(1)} km` : `${job.distanceM} m`)
-        : null;
-
-    return (
-        <Pressable
-            onPress={onPress}
-            style={({ pressed }) => [styles.container, pressed && styles.pressed]}
-        >
-            <View style={styles.topRow}>
-                <View style={styles.iconBox}>
-                    <Text style={styles.iconText}>{job.title?.charAt(0)?.toUpperCase() || "İ"}</Text>
-                </View>
-                <View style={styles.titleCol}>
-                    <Text style={styles.title} numberOfLines={1}>{job.title}</Text>
-                    <Text style={styles.company} numberOfLines={1}>{job.company || "Asimos İşəgötürən"}</Text>
-                </View>
-                {(showDailyBadge && isDaily) && (
-                    <View style={styles.dailyBadge}>
-                        <Ionicons name="flash" size={12} color="#fff" />
-                        <Text style={styles.dailyText}>Gündəlik</Text>
-                    </View>
-                )}
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.wrapper, pressed && styles.pressed]}>
+      {showDailyBadge ? (
+        <View style={styles.badgeContainer}>
+            <View style={[styles.statePill, isDaily ? styles.stateSuccess : styles.stateInfo]}>
+              <Ionicons
+                name={isDaily ? "checkmark" : "time-outline"}
+                size={14}
+                color={isDaily ? "#16A34A" : "#D97706"}
+              />
+              <Text style={[styles.stateText, isDaily ? styles.stateSuccessText : styles.stateInfoText]}>
+                {isDaily ? "Gündəlik iş" : "Elan"}
+              </Text>
             </View>
+        </View>
+      ) : null}
 
-            <View style={styles.tagsRow}>
-                {job.category ? (
-                    <View style={[styles.tag, { backgroundColor: Colors.primarySoft }]}>
-                        <Text style={[styles.tagText, { color: Colors.primary }]}>{job.category}</Text>
-                    </View>
-                ) : null}
+      <View style={styles.card}>
+        <View style={styles.row}>
+          <Text style={styles.title} numberOfLines={1}>{job?.title || "Vakansiya"}</Text>
+          <Text style={styles.statusText} numberOfLines={1}>
+            {distDisplay ? `${distDisplay} uzaqda` : "Ətraflı bax"}
+          </Text>
+        </View>
 
-                <View style={[styles.tag, { backgroundColor: "#F3F4F6" }]}>
-                    <Text style={[styles.tagText, { color: Colors.subtext }]}>{wageDisplay}</Text>
-                </View>
-
-                {distDisplay && (
-                    <View style={[styles.tag, { backgroundColor: "#ECFDF5" }]}>
-                        <Ionicons name="location-sharp" size={10} color={Colors.success} style={{ marginRight: 2 }} />
-                        <Text style={[styles.tagText, { color: Colors.success }]}>{distDisplay}</Text>
-                    </View>
-                )}
-            </View>
-
-            <Text style={styles.desc} numberOfLines={2}>
-                {job.description}
-            </Text>
-
-            <View style={styles.footer}>
-                <Text style={styles.timeAgo}>Yeni</Text>
-                <View style={styles.arrowBtn}>
-                    <Ionicons name="arrow-forward" size={16} color={Colors.primary} />
-                </View>
-            </View>
-        </Pressable>
-    );
+        <View style={styles.rowTopMargin}>
+          <View style={styles.leftCol}>
+             <Text style={styles.meta} numberOfLines={1}>{companyLabel}</Text>
+             <Text style={styles.meta} numberOfLines={1}>{typeLabel}</Text>
+          </View>
+          <View style={styles.rightCol}>
+             <Text style={styles.amount} numberOfLines={1}>{wageDisplay}</Text>
+          </View>
+        </View>
+      </View>
+    </Pressable>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        backgroundColor: "#fff",
-        borderRadius: 24,
-        marginBottom: 16,
-        padding: 16,
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.1,
-        shadowRadius: 24,
-        elevation: 8,
-        borderWidth: 1,
-        borderColor: "#F1F5F9",
-    },
-    pressed: {
-        transform: [{ scale: 0.98 }],
-        opacity: 0.9,
-    },
-    topRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginBottom: 12,
-    },
-    iconBox: {
-        width: 48,
-        height: 48,
-        borderRadius: 16,
-        backgroundColor: Colors.bg,
-        alignItems: "center",
-        justifyContent: "center",
-        marginRight: 12,
-    },
-    iconText: {
-        fontSize: 20,
-        fontWeight: "900",
-        color: Colors.primary,
-    },
-    titleCol: {
-        flex: 1,
-        justifyContent: "center",
-    },
-    title: {
-        fontSize: 17,
-        fontWeight: "800",
-        color: Colors.text,
-        marginBottom: 2,
-    },
-    company: {
-        fontSize: 13,
-        color: Colors.muted,
-        fontWeight: "600",
-    },
-    dailyBadge: {
-        flexDirection: "row",
-        alignItems: "center",
-        backgroundColor: "#F59E0B", // Amber
-        paddingVertical: 4,
-        paddingHorizontal: 8,
-        borderRadius: 10,
-        gap: 4,
-    },
-    dailyText: {
-        color: "#fff",
-        fontSize: 11,
-        fontWeight: "800",
-    },
-    tagsRow: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 8,
-        marginBottom: 12,
-    },
-    tag: {
-        alignSelf: "flex-start",
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 6,
-        paddingHorizontal: 10,
-        borderRadius: 10,
-    },
-    tagText: {
-        fontSize: 12,
-        fontWeight: "700",
-    },
-    desc: {
-        fontSize: 14,
-        color: Colors.subtext,
-        lineHeight: 20,
-        marginBottom: 12,
-    },
-    footer: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        borderTopWidth: 1,
-        borderTopColor: "#F1F5F9",
-        paddingTop: 12,
-    },
-    timeAgo: {
-        fontSize: 12,
-        fontWeight: "600",
-        color: Colors.muted,
-    },
-    arrowBtn: {
-        width: 32,
-        height: 32,
-        borderRadius: 99,
-        backgroundColor: Colors.primarySoft,
-        alignItems: "center",
-        justifyContent: "center",
-    },
+  wrapper: {
+    marginBottom: 20,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  badgeContainer: {
+     marginBottom: -12,
+     paddingHorizontal: 16,
+     zIndex: 10,
+  },
+  statePill: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+  },
+  stateSuccess: {
+    backgroundColor: "#F0FDF4",
+    borderColor: "#BBF7D0",
+  },
+  stateInfo: {
+    backgroundColor: "#FEFCE8",
+    borderColor: "#FEF08A",
+  },
+  stateText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  stateSuccessText: {
+    color: "#16A34A",
+  },
+  stateInfoText: {
+    color: "#D97706",
+  },
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F3F4F6",
+    padding: 18,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  rowTopMargin: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
+  leftCol: {
+    flex: 1,
+    gap: 4,
+  },
+  rightCol: {
+    marginLeft: 12,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#111827",
+    flex: 1,
+    marginRight: 12,
+  },
+  statusText: {
+    fontSize: 13,
+    color: "#4B5563",
+    fontWeight: "400",
+  },
+  meta: {
+    fontSize: 14,
+    color: "#6B7280",
+    fontWeight: "400",
+  },
+  amount: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111827",
+  },
 });

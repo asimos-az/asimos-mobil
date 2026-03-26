@@ -101,9 +101,14 @@ export function SeekerNotificationsScreen() {
           <Text style={styles.sub}>{unreadCount ? `${unreadCount} oxunmamış` : "Hamısı oxunub"}</Text>
         </View>
 
-        <Pressable onPress={markAllRead} style={styles.actionBtn}>
-          <Ionicons name="checkmark-done" size={20} color={Colors.primary} />
-        </Pressable>
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <Pressable onPress={() => navigation.navigate("JobAlerts")} style={styles.actionBtn}>
+             <Ionicons name="notifications-circle-outline" size={24} color={Colors.primary} />
+          </Pressable>
+          <Pressable onPress={markAllRead} style={styles.actionBtn}>
+            <Ionicons name="checkmark-done" size={20} color={Colors.primary} />
+          </Pressable>
+        </View>
       </View>
 
       <FlatList

@@ -199,6 +199,12 @@ export function SeekerJobsListScreen() {
     setBaseLocation(user?.location || null);
   }
 
+  useFocusEffect(
+    React.useCallback(() => {
+      navigation.setOptions({ headerShown: false });
+    }, [navigation])
+  );
+
   return (
     <SafeScreen>
       <JobsFilterModal
@@ -238,32 +244,36 @@ export function SeekerJobsListScreen() {
         }}
       />
 
+      {/* Main Header */}
       <View style={styles.top}>
-        {user ? (
-          <Pressable
-            onPress={() => navigation.navigate("SeekerNotifications")}
-            style={styles.iconBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Bildirişlər"
-          >
-            <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
-            {unread > 0 ? <View style={styles.unreadBadge} /> : null}
-          </Pressable>
-        ) : <View style={{ width: 44 }} />}
-
-        <View style={styles.titleWrap}>
-          <Text style={styles.title}>İş elanları</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.brandTitle}>Asimos</Text>
+          <Text style={styles.pageTitle}>İş elanları</Text>
         </View>
 
-        <Pressable
-          onPress={() => setFilterOpen(true)}
-          style={styles.iconBtn}
-          accessibilityRole="button"
-          accessibilityLabel="Filtrlər"
-        >
-          <Ionicons name="filter" size={22} color={Colors.primary} />
-          {hasActiveFilters ? <View style={styles.dot} /> : null}
-        </Pressable>
+        <View style={styles.headerActions}>
+          {user && (
+            <Pressable
+              onPress={() => navigation.navigate("SeekerNotifications")}
+              style={styles.iconBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Bildirişlər"
+            >
+              <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
+              {unread > 0 ? <View style={styles.unreadBadge} /> : null}
+            </Pressable>
+          )}
+
+          <Pressable
+            onPress={() => setFilterOpen(true)}
+            style={styles.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Filtrlər"
+          >
+            <Ionicons name="filter" size={22} color={Colors.primary} />
+            {hasActiveFilters ? <View style={styles.dot} /> : null}
+          </Pressable>
+        </View>
       </View>
 
 
@@ -310,18 +320,27 @@ export function SeekerJobsListScreen() {
 }
 
 const styles = StyleSheet.create({
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 8,
+  },
+  brandTitle: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#2563EB", 
+  },
   top: {
     paddingHorizontal: 16,
     paddingTop: 14,
-    paddingBottom: 12,
-    marginTop: -20, // To pull up under the transparent status bar if needed, or just remove
-    backgroundColor: Colors.bg, // Match background
+    paddingBottom: 24,
+    backgroundColor: Colors.bg,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  titleWrap: { flex: 1, alignItems: "center" },
-  title: { fontSize: 18, fontWeight: "900", color: Colors.text },
+  pageTitle: { fontSize: 22, fontWeight: "900", color: "#111827" },
+  headerActions: { flexDirection: "row", gap: 12 },
   iconBtn: {
     width: 44,
     height: 44,

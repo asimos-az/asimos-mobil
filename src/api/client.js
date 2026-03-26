@@ -139,7 +139,7 @@ export const api = {
 
   listJobs: () => request("/jobs"),
   listMyJobs: (createdBy) => request(`/jobs?createdBy=${encodeURIComponent(createdBy)}`),
-  listJobsWithSearch: ({ q, lat, lng, radius_m, daily, jobType }) => request(`/jobs${qs({ q, lat, lng, radius_m, daily, jobType })}`),
+  listJobsWithSearch: ({ q, lat, lng, radius_m, daily, jobType, minWage, maxWage, categories }) => request(`/jobs${qs({ q, lat, lng, radius_m, daily, jobType, minWage, maxWage, categories: Array.isArray(categories) ? categories.join(",") : categories })}`),
   getJobById: (id) => request(`/jobs/${encodeURIComponent(String(id))}`),
   createJob: (payload) => request("/jobs", { method: "POST", body: payload }),
   closeJob: (id, { reason } = {}) => request(`/jobs/${encodeURIComponent(String(id))}/close`, { method: "PATCH", body: { reason } }),
@@ -162,4 +162,5 @@ export const api = {
   listTickets: () => request("/support"),
   createTicket: (payload) => request("/support", { method: "POST", body: payload }),
   replyTicket: (id, message) => request(`/support/${encodeURIComponent(String(id))}/reply`, { method: "POST", body: { message } }),
+  deleteTicket: (id) => request(`/support/${encodeURIComponent(String(id))}`, { method: "DELETE" }),
 };

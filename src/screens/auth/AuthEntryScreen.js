@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { Alert, Image, ScrollView, StyleSheet, Text, View, Pressable, KeyboardAvoidingView, Platform } from "react-native";
+import { Alert, ScrollView, Text, View, Pressable, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { BackgroundDecor } from "../../components/BackgroundDecor";
 import { Input } from "../../components/Input";
@@ -11,6 +11,7 @@ import { useAuth } from "../../context/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL, api } from "../../api/client";
 import { Ionicons } from "@expo/vector-icons";
+import { styles } from "./AuthEntryScreen.styles";
 
 const MODE = { LOGIN: "login", REGISTER: "register" };
 const ROLE = { ALICI: "seeker", SATICI: "employer" };
@@ -161,16 +162,16 @@ export function AuthEntryScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <View style={{ width: "100%", alignItems: "flex-start", marginBottom: 10 }}>
+            <View style={styles.headerTop}>
               {nav.canGoBack() ? (
-                <Pressable onPress={() => nav.goBack()} style={{ padding: 8, marginLeft: -8 }}>
+                <Pressable onPress={() => nav.goBack()} style={styles.backPressable}>
                   <Ionicons name="arrow-back" size={24} color={Colors.text} />
                 </Pressable>
               ) : (
                 <Pressable onPress={() => {
-                  nav.navigate("SeekerTabs"); // Try navigating to main tabs
-                }} style={{ padding: 8, marginLeft: -8 }}>
-                  <Text style={{ color: Colors.muted, fontWeight: "700" }}>Hələlik keç</Text>
+                  nav.navigate("SeekerTabs"); 
+                }} style={styles.backPressable}>
+                  <Text style={styles.skipText}>Hələlik keç</Text>
                 </Pressable>
               )}
             </View>
@@ -187,7 +188,6 @@ export function AuthEntryScreen() {
           </View>
 
           <View style={styles.formCard}>
-
             {mode === MODE.REGISTER && (
               <View style={styles.roleContainer}>
                 <Pressable
@@ -239,7 +239,7 @@ export function AuthEntryScreen() {
                       options={categoryOptions}
                       loading={categoriesLoading}
                     />
-                    <View style={{ height: 16 }} />
+                    <View style={styles.spacing16} />
                   </>
                 ) : null}
 
@@ -278,19 +278,19 @@ export function AuthEntryScreen() {
 
                 <Pressable
                   onPress={() => setTermsAccepted(!termsAccepted)}
-                  style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 10 }}
+                  style={styles.termsRow}
                 >
                   <Ionicons
                     name={termsAccepted ? "checkbox" : "square-outline"}
                     size={24}
                     color={termsAccepted ? Colors.primary : Colors.muted}
                   />
-                  <Text style={{ flex: 1, color: Colors.muted, fontSize: 13, lineHeight: 18 }}>
-                    <Text style={{ fontWeight: "700", color: Colors.text }}>Qaydalar və Şərtlər</Text> ilə tanış oldum və razıyam.
+                  <Text style={styles.termsTextContainer}>
+                    <Text style={styles.termsTextBold}>Qaydalar və Şərtlər</Text> ilə tanış oldum və razıyam.
                   </Text>
                 </Pressable>
-                <Pressable onPress={() => nav.navigate("Terms", { slug: "terms", title: "Qaydalar" })} style={{ marginLeft: 34, marginTop: 4 }}>
-                  <Text style={{ color: Colors.primary, fontWeight: '700', fontSize: 12, textDecorationLine: 'underline' }}>Qaydaları oxu</Text>
+                <Pressable onPress={() => nav.navigate("Terms", { slug: "terms", title: "Qaydalar" })} style={styles.readTermsPressable}>
+                  <Text style={styles.readTermsText}>Qaydaları oxu</Text>
                 </Pressable>
               </>
             ) : (
@@ -310,13 +310,13 @@ export function AuthEntryScreen() {
                   placeholder="••••••••"
                   secureTextEntry
                 />
-                <Pressable style={{ alignSelf: 'flex-end', marginTop: 8 }} onPress={() => nav.navigate("ForgotPassword")}>
-                  <Text style={{ color: Colors.primary, fontWeight: '700', fontSize: 13 }}>Şifrəni unutmusan?</Text>
+                <Pressable style={styles.forgotPasswordPressable} onPress={() => nav.navigate("ForgotPassword")}>
+                  <Text style={styles.forgotPasswordText}>Şifrəni unutmusan?</Text>
                 </Pressable>
               </>
             )}
 
-            <View style={{ height: 24 }} />
+            <View style={styles.spacing24} />
             <PrimaryButton
               title={mode === MODE.LOGIN ? "Daxil ol" : "Qeydiyyat"}
               loading={loading}
@@ -339,69 +339,6 @@ export function AuthEntryScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeScreen >
+    </SafeScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  scroll: { flexGrow: 1, padding: 20, paddingBottom: 40 },
-
-  header: {
-    alignItems: "center",
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  logo: { width: 100, height: 100, marginBottom: 16, borderRadius: 20 },
-  title: { fontSize: 28, fontWeight: "900", color: Colors.text, marginBottom: 8 },
-  subtitle: { fontSize: 16, color: Colors.muted, textAlign: "center", maxWidth: "80%" },
-
-  formCard: {
-    backgroundColor: "#fff",
-    borderRadius: 24,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 4,
-  },
-
-  roleContainer: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 20,
-  },
-  roleBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    gap: 8,
-    borderRadius: 14,
-    backgroundColor: Colors.bg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  roleBtnActive: {
-    backgroundColor: Colors.primarySoft,
-    borderColor: Colors.primary,
-  },
-  roleText: { fontWeight: "700", color: Colors.muted },
-  roleTextActive: { color: Colors.primary, fontWeight: "900" },
-
-  help: { marginTop: 12, color: Colors.muted, fontWeight: "600", fontSize: 12, lineHeight: 18, textAlign: 'center' },
-
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginTop: 30,
-    marginBottom: 20,
-  },
-  footerText: { color: Colors.text, fontWeight: "600", fontSize: 15 },
-  footerLink: { color: Colors.primary, fontWeight: "900", fontSize: 15 },
-  link: { color: Colors.primary, fontWeight: "800", textDecorationLine: "underline" },
-});
