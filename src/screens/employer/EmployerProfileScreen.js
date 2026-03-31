@@ -67,7 +67,7 @@ export function EmployerProfileScreen() {
   ];
 
   const [statsLoading, setStatsLoading] = useState(false);
-  const [stats, setStats] = useState({ total: 0, open: 0, closed: 0 });
+  const [stats, setStats] = useState({ total: 0, open: 0, closed: 0, answeredSupport: 0 });
 
   const initials = useMemo(() => {
     const name = (user?.fullName || "").trim();
@@ -114,10 +114,12 @@ export function EmployerProfileScreen() {
       try {
         const res = await api.getMyJobs({ limit: 1 }).catch(() => null);
         if (alive) {
+          const supRes = await api.getSupportStats().catch(() => ({ answeredCount: 0 }));
           setStats({
             total: res?.total || 0,
             open: res?.total_active || 0,
             closed: res?.total_closed || 0,
+            answeredSupport: supRes?.answeredCount || 0,
           });
         }
       } catch {
@@ -127,7 +129,16 @@ export function EmployerProfileScreen() {
     }
     loadStats();
     const unsub = navigation.addListener?.("focus", loadStats);
-    return () => { alive = false; if (unsub) unsub(); };
+
+    const interval = setInterval(() => {
+      loadStats();
+    }, 10000); // 10s for profile
+
+    return () => {
+      alive = false;
+      if (unsub) unsub();
+      clearInterval(interval);
+    };
   }, [navigation]);
 
   async function onPickedLocation(loc) {
@@ -328,6 +339,11 @@ export function EmployerProfileScreen() {
              <TouchableOpacity style={styles.listItem} onPress={() => navigation.navigate("Support")}>
                 <Ionicons name="chatbubble-outline" size={20} color="#64748B" />
                 <Text style={styles.listItemText}>Dəstək</Text>
+                {stats.answeredSupport > 0 && (
+                  <View style={{ backgroundColor: '#DC2626', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2, marginRight: 8 }}>
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>{stats.answeredSupport}</Text>
+                  </View>
+                )}
                 <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
              </TouchableOpacity>
              <View style={styles.divider} />

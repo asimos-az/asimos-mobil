@@ -28,6 +28,13 @@ export function EmployerJobCard({ job, onPress, onToggleStatus, loading, readonl
             borderColor: "#FECACA",
             icon: "lock-closed"
         },
+        rejected: {
+            label: "Rədd edilib",
+            color: "#DC2626",
+            bg: "#FEF2F2",
+            borderColor: "#FECACA",
+            icon: "close-circle-outline"
+        },
     }), []);
 
     const status = String(job.status || "open").toLowerCase();
@@ -68,6 +75,13 @@ export function EmployerJobCard({ job, onPress, onToggleStatus, loading, readonl
                         <Text style={styles.amount} numberOfLines={1}>{wageDisplay}</Text>
                     </View>
                 </View>
+
+                {status === 'rejected' && job.rejectionReason && (
+                    <View style={styles.rejectionBox}>
+                        <Text style={styles.rejectionTitle}>Rədd səbəbi:</Text>
+                        <Text style={styles.rejectionText}>{job.rejectionReason}</Text>
+                    </View>
+                )}
                 
                 {/* Actions Footer */}
                 {!readonly && (
@@ -196,5 +210,24 @@ const styles = StyleSheet.create({
     actionText: {
         fontSize: 13,
         fontWeight: "600",
+    },
+    rejectionBox: {
+        marginTop: 12,
+        padding: 10,
+        backgroundColor: "#FFF5F5",
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: "#FEE2E2",
+    },
+    rejectionTitle: {
+        fontSize: 12,
+        fontWeight: "700",
+        color: "#DC2626",
+        marginBottom: 2,
+    },
+    rejectionText: {
+        fontSize: 13,
+        color: "#B91C1C",
+        lineHeight: 18,
     },
 });

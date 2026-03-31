@@ -6,18 +6,23 @@ import { useAuth } from "../../context/AuthContext";
 import { api } from "../../api/client";
 import { EmployerJobCard } from "../../components/EmployerJobCard";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useIsFocused } from "@react-navigation/native";
 import { SegmentedControl } from "../../components/SegmentedControl";
 
 export function EmployerJobsScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
-
   const [tab, setTab] = useState("my");
   const [allJobs, setAllJobs] = useState([]);
   const [loadingAll, setLoadingAll] = useState(false);
+  const [statusTab, setStatusTab] = useState("open");
+
+  const filteredItems = useMemo(() => {
+    return items.filter(it => it.status === statusTab);
+  }, [items, statusTab]);
 
   async function load() {
     try {
@@ -50,10 +55,20 @@ export function EmployerJobsScreen() {
   }, [tab]);
 
   useEffect(() => {
-    const unsub = navigation.addListener("focus", load);
-    load();
-    return unsub;
-  }, [navigation]);
+    let interval = null;
+    if (isFocused) {
+      load();
+      if (tab === "all") loadAll();
+      
+      interval = setInterval(() => {
+        load();
+        if (tab === "all") loadAll();
+      }, 15000); // 15 seconds polling
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isFocused, tab]);
 
   async function toggleJob(item) {
     const isClosed = String(item?.status || "open").toLowerCase() === "closed";
@@ -69,6 +84,7 @@ export function EmployerJobsScreen() {
               setLoading(true);
               await api.reopenJob(item.id);
               await load();
+              setStatusTab("open");
             } catch (e) {
               Alert.alert("Xəta", e.message);
             } finally {
@@ -93,6 +109,7 @@ export function EmployerJobsScreen() {
               setLoading(true);
               await api.closeJob(item.id, { reason: "filled" });
               await load();
+              setStatusTab("closed");
             } catch (e) {
               Alert.alert("Xəta", e.message);
             } finally {
@@ -116,29 +133,89 @@ export function EmployerJobsScreen() {
     else navigation.navigate("EmployerMap");
   }
 
-  return (
-    <SafeScreen>
-      <View style={styles.top}>
-        <Pressable onPress={goNotifications} style={styles.iconBtn}>
-          <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
-        </Pressable>
-
-        <View style={styles.titleWrap}>
-          <Text style={styles.title}>İşçi axtaran paneli</Text>
-          <Text style={styles.sub}>Əlavə etdiyim elanlar</Text>
-        </View>
-
-        <Pressable
-          onPress={goMap}
-          style={styles.iconBtn}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Xəritə"
-        >
-          <Ionicons name="map-outline" size={22} color={Colors.primary} />
-        </Pressable>
+  const renderMyJobs = () => (
+    <>
+      <View style={{ marginBottom: 16 }}>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={[
+            { label: "Aktiv", value: "open" },
+            { label: "Gözləyən", value: "pending" },
+            { label: "Rədd edilib", value: "rejected" },
+            { label: "Deaktiv", value: "closed" },
+          ]}
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => setStatusTab(item.value)}
+              style={[
+                styles.statusTab,
+                statusTab === item.value && styles.statusTabActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.statusTabText,
+                  statusTab === item.value && styles.statusTabTextActive,
+                ]}
+              >
+                {item.label}
+              </Text>
+            </Pressable>
+          )}
+          keyExtractor={(it) => it.value}
+          contentContainerStyle={{ gap: 8 }}
+        />
       </View>
 
+      <FlatList
+        data={filteredItems}
+        keyExtractor={(it) => it.id}
+        refreshing={loading}
+        onRefresh={load}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        ListEmptyComponent={
+          <Text style={styles.empty}>
+            {statusTab === "open" && "Aktiv elanınız yoxdur."}
+            {statusTab === "pending" && "Yoxlanılan elanınız yoxdur."}
+            {statusTab === "rejected" && "Rədd edilmiş elanınız yoxdur."}
+            {statusTab === "closed" && "Deaktiv elanınız yoxdur."}
+          </Text>
+        }
+        renderItem={({ item }) => (
+          <EmployerJobCard
+            job={item}
+            onPress={() => navigation.navigate("JobDetail", { job: item })}
+            onToggleStatus={toggleJob}
+            loading={loading}
+          />
+        )}
+      />
+    </>
+  );
+
+  const renderAllJobs = () => (
+    <FlatList
+      data={allJobs}
+      keyExtractor={(it) => it.id}
+      refreshing={loadingAll}
+      onRefresh={loadAll}
+      contentContainerStyle={{ paddingBottom: 120 }}
+      ListEmptyComponent={
+        <Text style={styles.empty}>Hələ heç bir elan yoxdur.</Text>
+      }
+      renderItem={({ item }) => (
+        <EmployerJobCard
+          job={item}
+          onPress={() => navigation.navigate("JobDetail", { job: item })}
+          readonly={true}
+        />
+      )}
+    />
+  );
+
+  return (
+    <SafeScreen>
       <View style={styles.body}>
         <View style={{ marginBottom: 16 }}>
           <SegmentedControl
@@ -148,85 +225,35 @@ export function EmployerJobsScreen() {
           />
         </View>
 
-        {tab === "my" ? (
-          <FlatList
-            data={items}
-            keyExtractor={(it) => it.id}
-            refreshing={loading}
-            onRefresh={load}
-            contentContainerStyle={{ paddingBottom: 120 }}
-            ListEmptyComponent={
-              <Text style={styles.empty}>Hələ elan yoxdur. Aşağıdakı “+” ilə yeni elan yarat.</Text>
-            }
-            renderItem={({ item }) => (
-              <EmployerJobCard
-                job={item}
-                onPress={() => navigation.navigate("JobDetail", { job: item })}
-                onToggleStatus={toggleJob}
-                loading={loading}
-              />
-            )}
-          />
-        ) : (
-          <FlatList
-            data={allJobs}
-            keyExtractor={(it) => it.id}
-            refreshing={loadingAll}
-            onRefresh={loadAll}
-            contentContainerStyle={{ paddingBottom: 120 }}
-            ListEmptyComponent={
-              <Text style={styles.empty}>Hələ heç bir elan yoxdur.</Text>
-            }
-            renderItem={({ item }) => (
-              <EmployerJobCard
-                job={item}
-                onPress={() => navigation.navigate("JobDetail", { job: item })}
-                // No onToggleStatus for others' jobs
-                readonly={true}
-              />
-            )}
-          />
-        )}
+        {tab === "my" ? renderMyJobs() : renderAllJobs()}
       </View>
     </SafeScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  top: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 14,
-    backgroundColor: Colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-start",
-    gap: 12,
-  },
-  titleWrap: { flex: 1 },
-  title: { fontSize: 20, fontWeight: "900", color: Colors.text },
-  sub: { marginTop: 4, color: Colors.muted, fontWeight: "800" },
-
-  iconBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
-    backgroundColor: Colors.primarySoft,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
-  },
-
   body: { flex: 1, padding: 16 },
   empty: { color: Colors.muted, textAlign: "center", marginTop: 22, fontWeight: "800" },
+  statusTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 99,
+    backgroundColor: "#f3f4f6",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+  statusTabActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  statusTabText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#6b7280",
+  },
+  statusTabTextActive: {
+    color: "#fff",
+  },
 
   cardHeader: {
     paddingHorizontal: 14,

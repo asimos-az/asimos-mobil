@@ -152,6 +152,9 @@ export function SupportScreen() {
                 onPress={() => {
                     setActiveTicket(item);
                     setMode("detail");
+                    if (item.is_answered) {
+                      api.markTicketRead(item.id).catch(() => {});
+                    }
                 }}
             >
                 <View style={styles.row}>
@@ -348,10 +351,12 @@ export function SupportScreen() {
                         </View>
                         <Text style={styles.emptyTitle}>Sualınız var?</Text>
                         <Text style={styles.emptyDesc}>Bizə yazın, ən qısa zamanda cavablandıraq.</Text>
-                        <PrimaryButton
-                            title="+ Yeni Müraciət"
-                            onPress={() => setMode("create")}
-                        />
+                        <View style={{ width: 220 }}>
+                            <PrimaryButton
+                                title="+ Yeni Müraciət"
+                                onPress={() => setMode("create")}
+                            />
+                        </View>
                     </View>
                 }
             />

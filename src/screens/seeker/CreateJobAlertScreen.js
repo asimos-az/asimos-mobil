@@ -2,25 +2,27 @@ import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, ScrollView, TouchableOpacity, Switch, Alert, StyleSheet, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import Slider from "@react-native-community/slider";
 import { api } from "../../api/client";
 import { Colors } from "../../theme/colors";
-import { SelectField } from "../../components/SelectField";
 import { SafeScreen } from "../../components/SafeScreen";
 
 export default function CreateJobAlertScreen({ navigation }) {
-    const [keywordInput, setKeywordInput] = useState("");
-    const [keywords, setKeywords] = useState([]);
+    const [query, setQuery] = useState("");
     const [minWage, setMinWage] = useState("");
-    const [jobType, setJobType] = useState("all"); // 'all', 'permanent', 'temporary'
-    const [useLocation, setUseLocation] = useState(false);
-    const [radius, setRadius] = useState(5000); // meters
-    const [loading, setLoading] = useState(false);
+    const [maxWage, setMaxWage] = useState("");
+    
+    // location state
+    const [distance, setDistance] = useState(null); // null = "Ölkə üzrə", 1000, 5000, 10000
     const [location, setLocation] = useState(null);
+    const [locationName, setLocationName] = useState("");
+    const [locLoading, setLocLoading] = useState(false);
 
+    // categories state
     const [category, setCategory] = useState("");
     const [categoryOptions, setCategoryOptions] = useState([]);
     const [categoriesLoading, setCategoriesLoading] = useState(false);
+
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         let alive = true;
@@ -29,15 +31,11 @@ export default function CreateJobAlertScreen({ navigation }) {
                 setCategoriesLoading(true);
                 const res = await api.listCategories();
                 const items = Array.isArray(res?.items) ? res.items : [];
-                const out = [];
+                const parentCategories = [];
                 for (const p of items) {
-                    if (p?.name) out.push(String(p.name));
-                    const children = Array.isArray(p?.children) ? p.children : [];
-                    for (const c of children) {
-                        if (c?.name) out.push(`↳ ${String(c.name)}`);
-                    }
+                    if (p?.name) parentCategories.push(String(p.name));
                 }
-                if (alive) setCategoryOptions(out);
+                if (alive) setCategoryOptions(parentCategories); // only keep top-level for pills to avoid clutter
             } catch (e) {
                 // ignore
             } finally {
@@ -48,48 +46,59 @@ export default function CreateJobAlertScreen({ navigation }) {
     }, []);
 
     useEffect(() => {
-        if (useLocation) {
+        if (distance !== null) {
             (async () => {
+                setLocLoading(true);
                 let { status } = await Location.requestForegroundPermissionsAsync();
                 if (status !== "granted") {
-                    Alert.alert("İcazə yoxdur", "Məkan icazəsi verilməyib.");
-                    setUseLocation(false);
+                    Alert.alert("İcazə yoxdur", "Xəritə/Məkan icazəsi verilməyib.");
+                    setDistance(null);
+                    setLocLoading(false);
                     return;
                 }
-                let loc = await Location.getCurrentPositionAsync({});
-                setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+                try {
+                    let loc = await Location.getCurrentPositionAsync({});
+                    setLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+                    // Optional: Reverse geocode to get name
+                    let geo = await Location.reverseGeocodeAsync({
+                        latitude: loc.coords.latitude,
+                        longitude: loc.coords.longitude
+                    });
+                    if (geo && geo.length > 0) {
+                        const addr = geo[0];
+                        setLocationName([addr.street, addr.city, addr.country].filter(Boolean).join(", "));
+                    } else {
+                        setLocationName("Cari Məkanınız");
+                    }
+                } catch(e) {
+                    Alert.alert("Xəta", "Məkanı tapmaq mümkün olmadı");
+                    setDistance(null);
+                } finally {
+                    setLocLoading(false);
+                }
             })();
+        } else {
+            setLocation(null);
+            setLocationName("");
         }
-    }, [useLocation]);
-
-    const handleAddKeyword = () => {
-        const val = keywordInput.trim();
-        if (val && !keywords.includes(val)) {
-            setKeywords([...keywords, val]);
-        }
-        setKeywordInput("");
-    };
-
-    const handleRemoveKeyword = (kw) => {
-        setKeywords(keywords.filter(k => k !== kw));
-    };
+    }, [distance]);
 
     const handleCreate = async () => {
-        if (keywords.length === 0 && !minWage && jobType === "all" && !useLocation && !category) {
+        if (!query && !minWage && !maxWage && !category && distance === null) {
             Alert.alert("Xəta", "Ən azı bir kriteriya daxil edin.");
             return;
         }
 
         setLoading(true);
         try {
-            const finalQuery = keywords.join(" ");
             const payload = {
-                query: finalQuery || null,
+                query: query.trim() || null,
                 category: category || null,
                 min_wage: minWage ? Number(minWage) : null,
-                job_type: jobType === "all" ? null : jobType,
-                location: useLocation ? location : null,
-                radius_m: useLocation ? radius : null,
+                max_wage: maxWage ? Number(maxWage) : null,
+                job_type: null, // removing job_type according to Screenshot design
+                location: distance !== null ? location : null,
+                radius_m: distance !== null ? distance : null,
             };
 
             await api.createAlert(payload);
@@ -103,141 +112,134 @@ export default function CreateJobAlertScreen({ navigation }) {
         }
     };
 
+    const renderDistanceBtn = (val, label) => {
+        const isActive = distance === val;
+        return (
+            <TouchableOpacity 
+                style={[styles.distBtn, isActive && styles.distBtnActive]} 
+                onPress={() => setDistance(val)}
+            >
+                <Text style={[styles.distText, isActive && styles.distTextActive]}>{label}</Text>
+                {isActive && <View style={styles.distLine} />}
+            </TouchableOpacity>
+        );
+    };
+
     return (
         <SafeScreen style={styles.container}>
-            <View style={styles.headerRow}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Ionicons name="chevron-back" size={24} color="#0F172A" />
-                </TouchableOpacity>
+            <View style={styles.header}>
                 <Text style={styles.headerTitle}>Bildiriş Yarat</Text>
-                <View style={{ width: 40 }} />
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
+                    <Ionicons name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 
-                <View style={styles.card}>
-                    <Text style={styles.label}>Açar sözlər (Məs: Ofisiant, Barmen)</Text>
-                    <View style={styles.inputRow}>
+                {/* Search */}
+                <View style={styles.section}>
+                    <View style={styles.inputWrap}>
                         <TextInput
-                            style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                            value={keywordInput}
-                            onChangeText={setKeywordInput}
-                            onSubmitEditing={handleAddKeyword}
-                            placeholder="Söz yaz və '+' bas..."
-                            placeholderTextColor="#94A3B8"
+                            style={styles.input}
+                            value={query}
+                            onChangeText={setQuery}
+                            placeholder="Məs: ofisiant"
+                            placeholderTextColor={Colors.muted}
                         />
-                        <TouchableOpacity style={styles.addBtn} onPress={handleAddKeyword}>
-                            <Ionicons name="add" size={24} color="#fff" />
-                        </TouchableOpacity>
                     </View>
+                </View>
 
-                    {keywords.length > 0 && (
-                        <View style={styles.chipContainer}>
-                            {keywords.map(kw => (
-                                <View key={kw} style={styles.chip}>
-                                    <Text style={styles.chipText}>{kw}</Text>
-                                    <TouchableOpacity onPress={() => handleRemoveKeyword(kw)}>
-                                        <Ionicons name="close-circle" size={18} color="#64748B" />
+                {/* Salary */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Maaş (filter)</Text>
+                    <View style={styles.row}>
+                        <View style={{flex: 1}}>
+                            <Text style={styles.subLabel}>Min</Text>
+                            <View style={[styles.inputWrap, {marginTop: 6}]}>
+                                <TextInput
+                                    style={styles.input}
+                                    value={minWage}
+                                    onChangeText={setMinWage}
+                                    placeholder="məs: 400"
+                                    placeholderTextColor={Colors.muted}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                        </View>
+                        <View style={{flex: 1}}>
+                            <Text style={styles.subLabel}>Max</Text>
+                            <View style={[styles.inputWrap, {marginTop: 6}]}>
+                                <TextInput
+                                    style={styles.input}
+                                    value={maxWage}
+                                    onChangeText={setMaxWage}
+                                    placeholder="məs: 1200"
+                                    placeholderTextColor={Colors.muted}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Distance */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Məsafə</Text>
+                    <View style={styles.distRow}>
+                        {renderDistanceBtn(null, "Ölkə üzrə")}
+                        {renderDistanceBtn(1000, "1km")}
+                        {renderDistanceBtn(5000, "5km")}
+                        {renderDistanceBtn(10000, "10km")}
+                    </View>
+                </View>
+
+                {/* Categories */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Kateqoriya</Text>
+                    {categoriesLoading ? (
+                        <ActivityIndicator />
+                    ) : (
+                        <View style={styles.pillsWrap}>
+                            {categoryOptions.map(cat => {
+                                const active = category === cat;
+                                return (
+                                    <TouchableOpacity 
+                                        key={cat} 
+                                        style={[styles.pill, active && styles.pillActive]}
+                                        onPress={() => setCategory(active ? "" : cat)}
+                                    >
+                                        <Text style={[styles.pillText, active && styles.pillTextActive]}>{cat}</Text>
                                     </TouchableOpacity>
-                                </View>
-                            ))}
+                                );
+                            })}
                         </View>
                     )}
                 </View>
 
-                <View style={styles.card}>
-                    <SelectField
-                        label="Kateqoriya"
-                        value={category}
-                        onChange={(v) => {
-                            const raw = String(v || "");
-                            setCategory(raw.startsWith("↳ ") ? raw.slice(2) : raw);
-                        }}
-                        placeholder="İstənilən kateqoriya"
-                        options={categoryOptions}
-                        loading={categoriesLoading}
-                    />
-                </View>
-
-                <View style={styles.card}>
-                    <Text style={styles.label}>Minimum Maaş (AZN)</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={minWage}
-                        onChangeText={setMinWage}
-                        placeholder="Məs: 500"
-                        placeholderTextColor="#94A3B8"
-                        keyboardType="numeric"
-                    />
-                </View>
-
-                <View style={styles.card}>
-                    <Text style={styles.label}>İş Rejimi</Text>
-                    <View style={styles.row}>
-                        {["all", "permanent", "temporary"].map((t) => (
-                            <TouchableOpacity
-                                key={t}
-                                style={[styles.typeBtn, jobType === t && styles.typeBtnActive]}
-                                onPress={() => setJobType(t)}
-                            >
-                                <Text style={[styles.typeText, jobType === t && styles.typeTextActive]}>
-                                    {t === "all" ? "Fərqi yoxdur" : t === "permanent" ? "Daimi" : "Müvəqqəti"}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-
-                <View style={[styles.card, { paddingVertical: 12 }]}>
-                    <View style={[styles.row, { justifyContent: "space-between" }]}>
-                        <Text style={[styles.label, { marginBottom: 0 }]}>Məkana görə axtarış</Text>
-                        <Switch
-                            value={useLocation}
-                            onValueChange={setUseLocation}
-                            trackColor={{ false: "#E2E8F0", true: "#0F172A" }}
-                            thumbColor="#fff"
-                        />
-                    </View>
-
-                    {useLocation && (
-                        <View style={styles.radiusBox}>
-                            <Text style={styles.subLabel}>Axtarış radiusu: <Text style={{ color: '#0F172A' }}>{Math.round(radius / 1000)} km</Text></Text>
-                            <Slider
-                                style={{ width: "100%", height: 40 }}
-                                minimumValue={1000}
-                                maximumValue={50000}
-                                step={1000}
-                                value={radius}
-                                onValueChange={setRadius}
-                                minimumTrackTintColor="#0F172A"
-                                maximumTrackTintColor="#E2E8F0"
-                                thumbTintColor="#0F172A"
-                            />
-                            {location ? (
-                                <View style={styles.locIndicator}>
-                                    <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                                    <Text style={styles.locText}>Məkan təyin olundu</Text>
-                                </View>
+                {/* Location Box */}
+                {distance !== null && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Filter lokasiyası</Text>
+                        <View style={styles.locBox}>
+                            {locLoading ? (
+                                <ActivityIndicator size="small" color={Colors.text} />
                             ) : (
-                                <ActivityIndicator size="small" color="#0F172A" style={{ marginTop: 10 }} />
+                                <Text style={styles.locBoxText}>{locationName || "Məkan təyin edilmədi"}</Text>
                             )}
                         </View>
-                    )}
-                </View>
+                    </View>
+                )}
 
-                <TouchableOpacity
-                    style={[styles.submitBtn, loading && { opacity: 0.7 }]}
-                    onPress={handleCreate}
-                    disabled={loading}
-                >
+                <TouchableOpacity style={styles.submitBtn} onPress={handleCreate} disabled={loading}>
                     {loading ? (
-                        <ActivityIndicator color="#000" />
+                        <ActivityIndicator color="#fff" />
                     ) : (
-                        <Text style={styles.submitText}>Bildirişi Yadda Saxla</Text>
+                        <Text style={styles.submitText}>Tətbiq et</Text>
                     )}
                 </TouchableOpacity>
 
-                <View style={{ height: 40 }} />
+                <View style={{height: 40}} />
+
             </ScrollView>
         </SafeScreen>
     );
@@ -245,60 +247,78 @@ export default function CreateJobAlertScreen({ navigation }) {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#F8FAFC" },
-    headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10, backgroundColor: '#F8FAFC' },
-    backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-    headerTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
+    header: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        paddingHorizontal: 20, 
+        paddingTop: 16, 
+        paddingBottom: 16 
+    },
+    headerTitle: { fontSize: 20, fontWeight: '800', color: Colors.text },
+    closeBtn: {
+        width: 36, height: 36, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
+        borderWidth: 1, borderColor: Colors.border
+    },
 
-    card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9' },
+    scrollContent: { paddingHorizontal: 20, paddingTop: 10 },
     
-    label: { fontSize: 14, fontWeight: "700", marginBottom: 10, color: "#64748B" },
-    inputRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-    input: {
-        backgroundColor: "#F8FAFC",
-        borderRadius: 12,
+    section: { marginBottom: 24 },
+    sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.text, marginBottom: 12 },
+    row: { flexDirection: 'row', gap: 12 },
+    
+    subLabel: { fontSize: 13, fontWeight: '700', color: Colors.text },
+    
+    inputWrap: {
+        backgroundColor: "transparent",
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: Colors.border,
         paddingHorizontal: 16,
         paddingVertical: 14,
-        fontSize: 16,
-        color: '#0F172A',
-        fontWeight: '600',
     },
-    addBtn: { width: 50, height: 50, borderRadius: 12, backgroundColor: '#0F172A', alignItems: 'center', justifyContent: 'center' },
-    
-    chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 },
-    chip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, gap: 6 },
-    chipText: { fontSize: 14, fontWeight: '700', color: '#334155' },
+    input: {
+        fontSize: 15,
+        color: Colors.text,
+        fontWeight: '500',
+    },
 
-    row: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 10 },
-    typeBtn: {
-        paddingVertical: 12,
+    distRow: { flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, borderColor: Colors.border },
+    distBtn: { paddingVertical: 12, paddingHorizontal: 4, position: 'relative' },
+    distText: { fontSize: 14, fontWeight: '600', color: Colors.muted },
+    distTextActive: { color: Colors.text, fontWeight: '800' },
+    distLine: { position: 'absolute', bottom: -1, left: 0, right: 0, height: 2, backgroundColor: Colors.text },
+
+    pillsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    pill: {
         paddingHorizontal: 16,
-        borderRadius: 12,
-        backgroundColor: "#F8FAFC",
+        paddingVertical: 10,
+        borderRadius: 20,
+        backgroundColor: "transparent",
         borderWidth: 1,
-        borderColor: '#F1F5F9',
-        flexGrow: 1,
-        alignItems: 'center'
+        borderColor: Colors.border,
     },
-    typeBtnActive: { backgroundColor: "#0F172A", borderColor: '#0F172A' },
-    typeText: { color: "#64748B", fontWeight: "700", fontSize: 14 },
-    typeTextActive: { color: "#fff" },
+    pillActive: { backgroundColor: 'rgba(16, 185, 129, 0.1)', borderColor: '#10B981' },
+    pillText: { fontSize: 13, fontWeight: '700', color: Colors.muted },
+    pillTextActive: { color: '#065F46' },
 
-    radiusBox: {
-        paddingTop: 20,
-        marginTop: 10,
-        borderTopWidth: 1,
-        borderTopColor: '#F1F5F9'
+    locBox: {
+        backgroundColor: "transparent",
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        padding: 16,
+        minHeight: 60,
+        justifyContent: 'center'
     },
-    subLabel: { fontSize: 14, fontWeight: "600", color: '#64748B', marginBottom: 16 },
-    locIndicator: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, backgroundColor: '#ECFDF5', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-    locText: { fontSize: 13, fontWeight: '700', color: "#065F46" },
+    locBoxText: { fontSize: 14, fontWeight: '700', color: Colors.text, lineHeight: 22 },
 
     submitBtn: {
-        backgroundColor: "#D4F06A",
-        padding: 18,
-        borderRadius: 16,
-        alignItems: "center",
-        marginTop: 10,
+        backgroundColor: Colors.text,
+        borderRadius: 20,
+        paddingVertical: 18,
+        alignItems: 'center',
+        marginTop: 10
     },
-    submitText: { color: "#0F172A", fontSize: 16, fontWeight: "900", textTransform: 'uppercase', letterSpacing: 0.5 },
+    submitText: { color: "#fff", fontSize: 16, fontWeight: '800' }
 });

@@ -9,8 +9,44 @@ import { SeekerDailyJobsScreen } from "../screens/seeker/SeekerDailyJobsScreen";
 import { SeekerMapScreen } from "../screens/seeker/SeekerMapScreen";
 import { SeekerProfileScreen } from "../screens/seeker/SeekerProfileScreen";
 import { useAuth } from "../context/AuthContext";
+import { api } from "../api/client";
+import { NotificationBell } from "../components/NotificationBell";
+import * as Notifications from "expo-notifications";
+import { useNavigation } from "@react-navigation/native";
 
 const Tab = createBottomTabNavigator();
+
+function SeekerHeaderRight() {
+  const navigation = useNavigation();
+  const [unread, setUnread] = React.useState(0);
+  const prevCount = React.useRef(0);
+
+  React.useEffect(() => {
+    async function load() {
+      try {
+        const res = await api.getUnreadNotificationsCount();
+        const current = res?.unread || 0;
+        if (current > prevCount.current) {
+          await Notifications.scheduleNotificationAsync({
+            content: { title: "Yeni bildiriş", body: "Sizin üçün yeni bildiriş var.", sound: true },
+            trigger: null,
+          });
+        }
+        prevCount.current = current;
+        setUnread(current);
+      } catch {}
+    }
+    load();
+    const interval = setInterval(load, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <View style={{ marginRight: 16 }}>
+      <NotificationBell count={unread} onPress={() => navigation.navigate("SeekerProfile")} />
+    </View>
+  );
+}
 
 const tabs = {
   SeekerJobs: { icon: "search-outline", iconActive: "search", label: "Jobs" },
@@ -70,8 +106,12 @@ export function SeekerTabs() {
         tabBarHideOnKeyboard: true,
         headerShown: true,
         headerTitle: "Asimos",
-        headerTitleStyle: { fontSize: 22, fontWeight: "900", color: Colors.primary },
+        headerTitleStyle: { fontSize: 24, fontWeight: "900", color: Colors.text },
+        headerTitleAlign: "left",
+        headerShadowVisible: false,
+        headerStyle: { backgroundColor: "#fff" },
         tabBarShowLabel: false,
+        headerRight: () => <SeekerHeaderRight />,
       }}
       tabBar={(props) => <SeekerTabBar {...props} />}
     >

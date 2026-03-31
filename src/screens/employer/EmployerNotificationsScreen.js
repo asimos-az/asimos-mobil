@@ -74,15 +74,23 @@ export function EmployerNotificationsScreen() {
             !loading && <Text style={styles.empty}>Hələ bildiriş yoxdur.</Text>
           }
           renderItem={({ item }) => (
-            <Card style={{ marginBottom: 12 }}>
-              <Text style={styles.itemTitle}>{item.title}</Text>
-              <Text style={styles.itemBody}>{item.body}</Text>
-              {item.created_at && (
-                <Text style={{ marginTop: 8, fontSize: 12, color: Colors.muted }}>
-                  {new Date(item.created_at).toLocaleString("az-AZ")}
-                </Text>
-              )}
-            </Card>
+            <Pressable onPress={() => {
+              if (item.data?.type === "support") {
+                navigation.navigate("Support");
+              }
+              // mark read
+              api.markNotificationRead(item.id).catch(() => {});
+            }}>
+              <Card style={{ marginBottom: 12 }}>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <Text style={styles.itemBody}>{item.body}</Text>
+                {item.created_at && (
+                  <Text style={{ marginTop: 8, fontSize: 12, color: Colors.muted }}>
+                    {new Date(item.created_at).toLocaleString("az-AZ")}
+                  </Text>
+                )}
+              </Card>
+            </Pressable>
           )}
         />
       </View>

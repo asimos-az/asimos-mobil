@@ -30,6 +30,7 @@ export function EmployerCreateJobScreen({ navigation }) {
   const [link, setLink] = useState("");
   const [voen, setVoen] = useState("");
   const [description, setDescription] = useState("");
+  const [companyName, setCompanyName] = useState("");
 
   const [jobType, setJobType] = useState(null); // "permanent" | "temporary"
   const [durationPreset, setDurationPreset] = useState("1"); // "1" | "3" | "10" | "other"
@@ -149,6 +150,7 @@ export function EmployerCreateJobScreen({ navigation }) {
         link,
         voen,
         description,
+        companyName,
 
         isDaily: jobType === "temporary",
 
@@ -165,7 +167,7 @@ export function EmployerCreateJobScreen({ navigation }) {
       });
 
       if (res?.job?.status === 'pending') {
-        alert("Elanınız yoxlanışdadır. Admin təsdiq etdikdən sonra elanlar siyahısında görünəcək.");
+        toast.show("Elanınız yaradıldı, yoxlanılması üçün admin təsdiqi gözləyin", "success");
       } else {
         toast.show("Elan yaradıldı.", "success");
       }
@@ -222,6 +224,15 @@ export function EmployerCreateJobScreen({ navigation }) {
 
           <View style={{ height: 10 }} />
 
+          <Input
+            label="Şirkət / Obyekt adı"
+            value={companyName}
+            onChangeText={setCompanyName}
+            placeholder="Məs: My Cafe & Bar"
+          />
+
+          <View style={{ height: 10 }} />
+
           <Text style={styles.label}>İş növü *</Text>
           <SegmentedControl
             value={jobType}
@@ -260,10 +271,6 @@ export function EmployerCreateJobScreen({ navigation }) {
           ) : null}
 
           {expiryHint ? <Text style={styles.help}>{expiryHint}</Text> : null}
-
-          <View style={{ height: 10 }} />
-
-          <Input label="Maaş" value={wage} onChangeText={setWage} placeholder="Məs: 800 AZN" />
 
           <SelectField
             label="Kateqoriya"

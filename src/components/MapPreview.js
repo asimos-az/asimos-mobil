@@ -100,12 +100,18 @@ export function MapPreview({ userLocation, jobLocation, height = 220 }) {
         const routes = e.routes;
         const summary = routes[0].summary;
         
-        const distKm = (summary.totalDistance / 1000).toFixed(1);
+        const distM = summary.totalDistance;
+        let distStr = Math.round(distM) + ' m';
+        if (distM >= 1000) {
+          const km = distM/1000;
+          distStr = Number.isInteger(km) ? km + ' km' : km.toFixed(1) + ' km';
+        }
+        
         const timeMin = Math.round(summary.totalTime / 60);
         
         const infoDiv = document.createElement('div');
         infoDiv.innerHTML = '<div style="background:white;padding:8px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.2);position:absolute;bottom:20px;left:20px;z-index:999;">' +
-                            '<b>🚗 Avtomobil:</b> ' + distKm + ' km • ' + timeMin + ' dəq' +
+                            '<b>🚗 Avtomobil:</b> ' + distStr + ' • ' + timeMin + ' dəq' +
                             '</div>';
         document.body.appendChild(infoDiv);
       }).addTo(map);

@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { JobCard } from "../../components/JobCard";
 import { JobsFilterModal } from "../../components/JobsFilterModal";
 import { NotificationBell } from "../../components/NotificationBell";
+import * as Notifications from "expo-notifications";
 
 const RADIUS_PRESETS = [
   { label: "Ölkə üzrə", value: 0 },
@@ -31,6 +32,7 @@ export function SeekerJobsListScreen() {
   const navigation = useNavigation();
   const { user, signOut } = useAuth();
   const [unread, setUnread] = useState(0);
+  const prevUnread = useRef(0);
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -54,11 +56,23 @@ export function SeekerJobsListScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => { });
+      async function syncUnread() {
+        try {
+          const r = await api.getUnreadNotificationsCount();
+          const current = r?.unread || 0;
+          if (current > prevUnread.current) {
+            await Notifications.scheduleNotificationAsync({
+              content: { title: "Yeni bildiriş", body: "Sizin üçün yeni bildiriş var.", sound: true },
+              trigger: null,
+            });
+          }
+          prevUnread.current = current;
+          setUnread(current);
+        } catch {}
+      }
+      syncUnread();
 
-      const t = setInterval(() => {
-        loadList();
-      }, 15000);
+      const t = setInterval(syncUnread, 5000);
       return () => clearInterval(t);
     }, [])
   );
@@ -252,17 +266,7 @@ export function SeekerJobsListScreen() {
         </View>
 
         <View style={styles.headerActions}>
-          {user && (
-            <Pressable
-              onPress={() => navigation.navigate("SeekerNotifications")}
-              style={styles.iconBtn}
-              accessibilityRole="button"
-              accessibilityLabel="Bildirişlər"
-            >
-              <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
-              {unread > 0 ? <View style={styles.unreadBadge} /> : null}
-            </Pressable>
-          )}
+          <NotificationBell count={unread} onPress={() => navigation.navigate("SeekerNotifications")} />
 
           <Pressable
             onPress={() => setFilterOpen(true)}

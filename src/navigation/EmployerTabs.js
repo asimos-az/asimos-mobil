@@ -7,6 +7,53 @@ import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../theme/colors";
 import { EmployerJobsScreen } from "../screens/employer/EmployerJobsScreen";
 import { EmployerProfileScreen } from "../screens/employer/EmployerProfileScreen";
+import { api } from "../api/client";
+import { NotificationBell } from "../components/NotificationBell";
+import { useNavigation } from "@react-navigation/native";
+
+import * as Notifications from "expo-notifications";
+
+function EmployerJobsHeaderRight() {
+  const navigation = useNavigation();
+  const [unread, setUnread] = React.useState(0);
+  const prevCount = React.useRef(0);
+
+  React.useEffect(() => {
+    async function load() {
+      try {
+        const res = await api.getUnreadNotificationsCount();
+        const current = res?.unread || 0;
+        
+        if (current > prevCount.current) {
+          // Play sound
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "Yeni bildiriş",
+              body: "Sizin üçün yeni bildiriş var.",
+              sound: true,
+            },
+            trigger: null,
+          });
+        }
+        
+        prevCount.current = current;
+        setUnread(current);
+      } catch {}
+    }
+    load();
+    const interval = setInterval(load, 5000); // Poll every 5s
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginRight: 16 }}>
+      <Pressable onPress={() => navigation.navigate("EmployerMap")} hitSlop={10}>
+        <Ionicons name="map-outline" size={24} color={Colors.primary} />
+      </Pressable>
+      <NotificationBell count={unread} onPress={() => navigation.navigate("EmployerNotifications")} />
+    </View>
+  );
+}
 
 const Tab = createBottomTabNavigator();
 
@@ -71,8 +118,12 @@ export function EmployerTabs() {
       screenOptions={{
         headerShown: true,
         headerTitle: "Asimos",
-        headerTitleStyle: { fontSize: 22, fontWeight: "900", color: Colors.primary },
+        headerTitleStyle: { fontSize: 24, fontWeight: "900", color: Colors.text },
+        headerTitleAlign: "left",
+        headerShadowVisible: false,
+        headerStyle: { backgroundColor: "#fff" },
         tabBarShowLabel: false,
+        headerRight: () => <EmployerJobsHeaderRight />,
       }}
       tabBar={(props) => <EmployerTabBar {...props} />}
     >

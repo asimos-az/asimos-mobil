@@ -8,6 +8,8 @@ import * as Location from "expo-location";
 import { api } from "../../api/client";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { JobsFilterModal } from "../../components/JobsFilterModal";
+import { NotificationBell } from "../../components/NotificationBell";
+import * as Notifications from "expo-notifications";
 
 const RADIUS_PRESETS = [
   { label: "Ölkə üzrə", value: 0 },
@@ -35,6 +37,8 @@ export function SeekerMapScreen() {
   const [minWage, setMinWage] = useState("");
   const [maxWage, setMaxWage] = useState("");
   const [selectedCategories, setSelectedCategories] = useState([]);
+  const [unread, setUnread] = useState(0);
+  const prevUnread = useRef(0);
 
   const radiusOptions = useMemo(() => RADIUS_PRESETS.map((x) => ({ label: x.label, value: x.value })), []);
 
@@ -84,6 +88,26 @@ export function SeekerMapScreen() {
   React.useEffect(() => {
     loadJobs();
   }, [initialJobs]);
+
+  React.useEffect(() => {
+    async function syncUnread() {
+      try {
+        const r = await api.getUnreadNotificationsCount();
+        const current = r?.unread || 0;
+        if (current > prevUnread.current) {
+          await Notifications.scheduleNotificationAsync({
+            content: { title: "Yeni bildiriş", body: "Sizin üçün yeni bildiriş var.", sound: true },
+            trigger: null,
+          });
+        }
+        prevUnread.current = current;
+        setUnread(current);
+      } catch {}
+    }
+    syncUnread();
+    const t = setInterval(syncUnread, 5000);
+    return () => clearInterval(t);
+  }, []);
 
   React.useEffect(() => {
     let sub = null;
@@ -325,9 +349,14 @@ export function SeekerMapScreen() {
           show: false, addWaypoints: false, draggableWaypoints: false, fitSelectedRoutes: false
         }).on('routesfound', function(e) {
           const r = e.routes[0];
-          const dist = (r.summary.totalDistance / 1000).toFixed(1);
+          const distM = r.summary.totalDistance;
+          let distStr = Math.round(distM) + ' m';
+          if (distM >= 1000) {
+            const km = distM/1000;
+            distStr = Number.isInteger(km) ? km + ' km' : km.toFixed(1) + ' km';
+          }
           const time = Math.round(r.summary.totalTime / 60);
-          document.getElementById('card-dist').innerText = dist + ' km • ~' + time + ' dəq (piyada)';
+          document.getElementById('card-dist').innerText = distStr + ' • ~' + time + ' dəq (piyada)';
         }).addTo(map);
       } else {
         document.getElementById('card-dist').innerText = 'Məsafə naməlumdur';
@@ -400,10 +429,11 @@ export function SeekerMapScreen() {
       )}
 
       {/* Floating Overlays */}
-      <View style={[styles.floatingTopLeft, { top: insets.top + 16 }]}>
+      <View style={[styles.floatingTopLeft, { top: insets.top + 16, flexDirection: 'row', gap: 12 }]}>
         <Pressable style={styles.circleBtn} onPress={() => nav.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#111" />
         </Pressable>
+        <NotificationBell count={unread} onPress={() => nav.navigate("SeekerNotifications")} />
       </View>
 
       <View style={[styles.floatingTopRight, { top: insets.top + 16 }]}>

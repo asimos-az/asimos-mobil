@@ -5,7 +5,11 @@ import { Colors } from "../theme/colors";
 
 function formatDistance(distanceM) {
   if (typeof distanceM !== "number") return null;
-  return distanceM > 1000 ? `${(distanceM / 1000).toFixed(1)} km` : `${distanceM} m`;
+  if (distanceM >= 1000) {
+    const km = distanceM / 1000;
+    return Number.isInteger(km) ? `${km} km` : `${km.toFixed(1)} km`;
+  }
+  return `${Math.round(distanceM)} m`;
 }
 
 export function JobCard({ job, onPress, showDailyBadge = true }) {

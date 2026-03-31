@@ -327,11 +327,6 @@ export function SeekerProfileScreen() {
 
         <View style={styles.section}>
           <View style={styles.cardGroup}>
-            <TouchableOpacity style={styles.listItem} onPress={() => navigation.navigate("Support")}>
-              <Ionicons name="chatbubble-outline" size={20} color="#64748B" />
-              <Text style={styles.listItemText}>Dəstək</Text>
-              <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
-            </TouchableOpacity>
             <View style={styles.divider} />
             <TouchableOpacity style={styles.listItem} onPress={() => Linking.openURL("https://www.asimos.az/policy")}>
               <Ionicons name="document-text-outline" size={20} color="#64748B" />

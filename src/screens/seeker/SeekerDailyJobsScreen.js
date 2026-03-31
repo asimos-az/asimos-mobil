@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { JobCard } from "../../components/JobCard";
 import { JobsFilterModal } from "../../components/JobsFilterModal";
 import { NotificationBell } from "../../components/NotificationBell";
+import * as Notifications from "expo-notifications";
 
 const RADIUS_PRESETS = [
   { label: "Ölkə üzrə", value: 0 },
@@ -30,6 +31,7 @@ export function SeekerDailyJobsScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
   const [unread, setUnread] = useState(0);
+  const prevUnread = useRef(0);
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -50,13 +52,23 @@ export function SeekerDailyJobsScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
-      api.getUnreadNotificationsCount()
-        .then((r) => setUnread(r?.unread || 0))
-        .catch(() => { });
+      async function syncUnread() {
+        try {
+          const r = await api.getUnreadNotificationsCount();
+          const current = r?.unread || 0;
+          if (current > prevUnread.current) {
+            await Notifications.scheduleNotificationAsync({
+              content: { title: "Yeni bildiriş", body: "Sizin üçün yeni bildiriş var.", sound: true },
+              trigger: null,
+            });
+          }
+          prevUnread.current = current;
+          setUnread(current);
+        } catch {}
+      }
+      syncUnread();
 
-      const t = setInterval(() => {
-        loadList();
-      }, 15000);
+      const t = setInterval(syncUnread, 5000);
       return () => clearInterval(t);
     }, [])
   );

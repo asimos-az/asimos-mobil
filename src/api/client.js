@@ -34,36 +34,52 @@ async function refreshSessionOrThrow() {
   }
 
   refreshPromise = (async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({ refreshToken: REFRESH_TOKEN }),
-        redirect: "follow",
-        cache: "no-store",
-      });
-
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        const msg = data?.error || "Refresh failed";
-        const err = new Error(msg);
-        err.status = res.status;
-        throw err;
-      }
-
-      AUTH_TOKEN = data.token || AUTH_TOKEN;
-      REFRESH_TOKEN = data.refreshToken || REFRESH_TOKEN;
-
-      if (TOKEN_UPDATE_HANDLER) {
-        TOKEN_UPDATE_HANDLER({
-          token: AUTH_TOKEN,
-          refreshToken: REFRESH_TOKEN,
-          user: data.user || null,
+    const doRefresh = async (retryCount = 0) => {
+      try {
+        console.log(`[Auth Refresh] Attempt ${retryCount + 1}`);
+        const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ refreshToken: REFRESH_TOKEN }),
+          redirect: "follow",
+          cache: "no-store",
         });
-      }
 
-      return { token: AUTH_TOKEN, refreshToken: REFRESH_TOKEN, user: data.user || null };
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          const msg = data?.error || "Refresh failed";
+          const err = new Error(msg);
+          err.status = res.status;
+          throw err;
+        }
+
+        AUTH_TOKEN = data.token || AUTH_TOKEN;
+        REFRESH_TOKEN = data.refreshToken || REFRESH_TOKEN;
+
+        if (TOKEN_UPDATE_HANDLER) {
+          TOKEN_UPDATE_HANDLER({
+            token: AUTH_TOKEN,
+            refreshToken: REFRESH_TOKEN,
+            user: data.user || null,
+          });
+        }
+
+        return { token: AUTH_TOKEN, refreshToken: REFRESH_TOKEN, user: data.user || null };
+      } catch (e) {
+        const isNetworkError = e?.message?.includes("Network request failed") || e?.message?.includes("failed to fetch");
+        if (retryCount < 5 && isNetworkError) {
+          console.warn(`[Auth Retry] Refresh failed, retrying in ${(retryCount + 1) * 3}s...`);
+          const delay = (retryCount + 1) * 3000;
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return doRefresh(retryCount + 1);
+        }
+        throw e;
+      }
+    };
+
+    try {
+      return await doRefresh();
     } finally {
       refreshPromise = null;
     }
@@ -72,49 +88,55 @@ async function refreshSessionOrThrow() {
   return refreshPromise;
 }
 
-async function request(path, { method = "GET", body, _retry = false } = {}) {
+async function request(path, { method = "GET", body, retryCount = 0 } = {}) {
   const p = (path || "/").startsWith("/") ? path : `/${path}`;
   const url = `${API_BASE_URL}${p}`;
   const headers = { "Accept": "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (AUTH_TOKEN) headers.Authorization = `Bearer ${AUTH_TOKEN}`;
 
-  let res;
   try {
-    res = await fetch(url, {
+    const res = await fetch(url, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       redirect: "follow",
       cache: "no-store",
     });
-  } catch (e) {
-    const msg = e?.message || "Network request failed";
-    throw new Error(`${msg}\n\nURL: ${url}`);
-  }
 
-  const text = await res.text();
-  let data = null;
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = text;
-  }
-
-  if (res.status === 401 && !_retry && REFRESH_TOKEN) {
-    try {
-      await refreshSessionOrThrow();
-      return request(path, { method, body, _retry: true });
-    } catch (e) {
+    if (res.status === 401 && retryCount === 0 && REFRESH_TOKEN) {
+      try {
+        await refreshSessionOrThrow();
+        return request(path, { method, body, retryCount: 1 });
+      } catch (e) {}
     }
-  }
 
-  if (!res.ok) {
-    const msg = (data && data.error) ? data.error : `HTTP ${res.status}`;
-    throw new Error(msg);
+    const text = await res.text();
+    let data = null;
+    try {
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = text;
+    }
+
+    if (!res.ok) {
+        const error = new Error(data?.error || data?.message || "Request failed");
+        error.status = res.status;
+        error.data = data;
+        throw error;
+    }
+
+    return data;
+  } catch (e) {
+    const isNetworkError = e?.message?.includes("Network request failed") || e?.message?.includes("failed to fetch");
+    if (retryCount < 1 && isNetworkError) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return request(path, { method, body, retryCount: 1 });
+    }
+    throw e;
   }
-  return data;
 }
+
 
 function qs(params) {
   const entries = Object.entries(params || {}).filter(([, v]) => v !== undefined && v !== null && v !== "");
@@ -160,6 +182,8 @@ export const api = {
   deleteAlert: (id) => request(`/me/alerts/${encodeURIComponent(String(id))}`, { method: "DELETE" }),
 
   listTickets: () => request("/support"),
+  getSupportStats: () => request("/support/stats"),
+  markTicketRead: (id) => request(`/support/${encodeURIComponent(String(id))}/read`, { method: "PATCH" }),
   createTicket: (payload) => request("/support", { method: "POST", body: payload }),
   replyTicket: (id, message) => request(`/support/${encodeURIComponent(String(id))}/reply`, { method: "POST", body: { message } }),
   deleteTicket: (id) => request(`/support/${encodeURIComponent(String(id))}`, { method: "DELETE" }),

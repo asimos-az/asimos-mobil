@@ -56,7 +56,7 @@ export default function JobAlertsScreen({ navigation }) {
                     <Text style={styles.details}>
                         {item.min_wage ? `${item.min_wage} AZN+` : "Maaş: Hər hansı"}
                         {item.job_type ? ` • ${item.job_type === 'permanent' ? 'Daimi' : 'Müvəqqəti'}` : ""}
-                        {item.radius_m ? ` • ${Math.round(item.radius_m / 1000)}km radius` : ""}
+                        {item.radius_m ? (item.radius_m >= 1000 ? ` • ${Number.isInteger(item.radius_m/1000) ? item.radius_m/1000 : (item.radius_m/1000).toFixed(1)} km radius` : ` • ${item.radius_m} m radius`) : ""}
                     </Text>
                 </View>
                 <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteBtn}>
