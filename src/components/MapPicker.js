@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors } from "../theme/colors";
 import { API_BASE_URL } from "../api/client";
 
-export function MapPicker({ visible, onClose, onPicked, initial, userLocation }) {
+export function MapPicker({ visible, onClose, onPicked, initial, userLocation, radius = 500 }) {
   const [webReady, setWebReady] = useState(false);
   const [webError, setWebError] = useState("");
 
@@ -211,6 +211,21 @@ export function MapPicker({ visible, onClose, onPicked, initial, userLocation })
       isSatellite = !isSatellite;
     });
 
+    const initRadius = ${Number(radius) || 500};
+    const coverageCircle = L.circle([initLat, initLng], {
+      color: '#16a34a',
+      fillColor: '#16a34a',
+      fillOpacity: 0.15,
+      weight: 2,
+      dashArray: '5, 5',
+      radius: initRadius,
+      interactive: false
+    }).addTo(map);
+
+    map.on('move', () => {
+      coverageCircle.setLatLng(map.getCenter());
+    });
+
     // User Location
     const uLat = ${uLatJs};
     const uLng = ${uLngJs};
@@ -370,7 +385,7 @@ export function MapPicker({ visible, onClose, onPicked, initial, userLocation })
   </script>
 </body>
 </html>`;
-  }, [initial?.lat, initial?.lng, initial?.address, userLocation?.lat, userLocation?.lng, safeBottom, safeTop]);
+  }, [initial?.lat, initial?.lng, initial?.address, userLocation?.lat, userLocation?.lng, safeBottom, safeTop, radius]);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>

@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef } from "react";
-import { StyleSheet, View, Text, Pressable, ActivityIndicator, Dimensions } from "react-native";
+import { StyleSheet, View, Text, Pressable, ActivityIndicator, Dimensions, TextInput, ScrollView, Keyboard, Linking } from "react-native";
 import { WebView } from "react-native-webview";
 import { Colors } from "../../theme/colors";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,7 +8,6 @@ import * as Location from "expo-location";
 import { api } from "../../api/client";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { JobsFilterModal } from "../../components/JobsFilterModal";
-import { NotificationBell } from "../../components/NotificationBell";
 import * as Notifications from "expo-notifications";
 
 const RADIUS_PRESETS = [
@@ -39,6 +38,26 @@ export function SeekerMapScreen() {
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [unread, setUnread] = useState(0);
   const prevUnread = useRef(0);
+  const [jobSelected, setJobSelected] = useState(false);
+
+  const [addressSearch, setAddressSearch] = useState("");
+  const [addressResults, setAddressResults] = useState([]);
+
+  const searchAddress = async (text) => {
+    setAddressSearch(text);
+    if (!text.trim()) {
+      setAddressResults([]);
+      return;
+    }
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text + ', Azerbaijan')}&limit=5`;
+      const res = await fetch(url, { headers: { 'User-Agent': 'AsimosApp/1.0' } });
+      const data = await res.json();
+      setAddressResults(data || []);
+    } catch (e) {
+      setAddressResults([]);
+    }
+  };
 
   const radiusOptions = useMemo(() => RADIUS_PRESETS.map((x) => ({ label: x.label, value: x.value })), []);
 
@@ -95,10 +114,20 @@ export function SeekerMapScreen() {
         const r = await api.getUnreadNotificationsCount();
         const current = r?.unread || 0;
         if (current > prevUnread.current) {
-          await Notifications.scheduleNotificationAsync({
-            content: { title: "Yeni bildiriş", body: "Sizin üçün yeni bildiriş var.", sound: true },
-            trigger: null,
-          });
+          const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+          const notifEnabled = await AsyncStorage.getItem("ASIMOS_NOTIF_ENABLED_V2");
+          const soundEnabled = await AsyncStorage.getItem("ASIMOS_NOTIF_SOUND_ENABLED");
+          
+          if (notifEnabled !== "0") {
+             await Notifications.scheduleNotificationAsync({
+               content: { 
+                 title: "Yeni bildiriş", 
+                 body: "Sizin üçün yeni bildiriş var.", 
+                 sound: soundEnabled !== "0" 
+               },
+               trigger: null,
+             });
+          }
         }
         prevUnread.current = current;
         setUnread(current);
@@ -228,6 +257,12 @@ export function SeekerMapScreen() {
     </div>
     <div class="card-actions">
        <button class="card-btn primary" id="card-btn">Detallara bax</button>
+       <button class="card-btn" id="gmap-btn" style="flex:0; padding:0 14px; background:#E5E7EB; margin-left:4px; display:flex; align-items:center; justify-content:center;">
+           <svg viewBox="0 0 24 24" width="22" height="22" fill="#4285F4"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+       </button>
+       <button class="card-btn" id="waze-btn" style="flex:0; padding:0 14px; background:#E5E7EB; margin-left:4px; display:flex; align-items:center; justify-content:center;">
+           <svg viewBox="0 0 24 24" width="24" height="24" fill="#33CCFF"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
+       </button>
     </div>
   </div>
 
@@ -282,6 +317,7 @@ export function SeekerMapScreen() {
     
     window.zoomInMap = function() { map.zoomIn(); };
     window.zoomOutMap = function() { map.zoomOut(); };
+    window.flyTo = function(lat, lng) { map.flyTo([lat, lng], 15, {animate: true}); };
 
     if(uLat && uLng) {
       window.updateMe(uLat, uLng);
@@ -337,6 +373,7 @@ export function SeekerMapScreen() {
       document.getElementById('card-wage').innerText = job.wage || 'Razılaşma ilə';
       document.getElementById('card-dist').innerText = 'Hesablanır...';
       document.getElementById('info-card').className = 'visible';
+      send('jobSelected', true);
       
       if(currentRoute) { map.removeControl(currentRoute); currentRoute = null; }
 
@@ -366,9 +403,16 @@ export function SeekerMapScreen() {
     document.getElementById('card-btn').addEventListener('click', () => {
       if(selectedJob) send('openJob', selectedJob.id);
     });
+    document.getElementById('gmap-btn').addEventListener('click', () => {
+      if(selectedJob) send('openGmap', selectedJob);
+    });
+    document.getElementById('waze-btn').addEventListener('click', () => {
+      if(selectedJob) send('openWaze', selectedJob);
+    });
     
     document.getElementById('card-close').addEventListener('click', () => {
       document.getElementById('info-card').className = '';
+      send('jobSelected', false);
       if(currentRoute) { map.removeControl(currentRoute); currentRoute = null; }
     });
 
@@ -412,11 +456,20 @@ export function SeekerMapScreen() {
         onLoadEnd={() => setLoading(false)}
         onMessage={(event) => {
           try {
-            const data = JSON.parse(event.nativeEvent.data);
-            if (data.type === 'openJob') {
-              const fullJob = jobs.find(j => j.id === data.payload);
-              if (fullJob) nav.navigate('JobDetail', { job: fullJob });
-            }
+             const data = JSON.parse(event.nativeEvent.data);
+             if (data.type === 'jobSelected') {
+                setJobSelected(data.payload);
+             }
+             if (data.type === 'openJob') {
+                const fullJob = jobs.find(j => j.id === data.payload);
+                if (fullJob) nav.navigate('JobDetail', { job: fullJob });
+             }
+             if (data.type === 'openGmap') {
+                Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${data.payload.lat},${data.payload.lng}`);
+             }
+             if (data.type === 'openWaze') {
+                Linking.openURL(`https://waze.com/ul?ll=${data.payload.lat},${data.payload.lng}&navigate=yes`);
+             }
           } catch { }
         }}
         containerStyle={{ backgroundColor: '#111827' }}
@@ -428,12 +481,58 @@ export function SeekerMapScreen() {
         </View>
       )}
 
-      {/* Floating Overlays */}
-      <View style={[styles.floatingTopLeft, { top: insets.top + 16, flexDirection: 'row', gap: 12 }]}>
+      <View style={[styles.floatingTopLeft, { top: insets.top + 16, right: 16, flexDirection: 'row', gap: 12 }]}>
         <Pressable style={styles.circleBtn} onPress={() => nav.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#111" />
         </Pressable>
-        <NotificationBell count={unread} onPress={() => nav.navigate("SeekerNotifications")} />
+        
+        <View style={{ flex: 1, zIndex: 50 }}>
+          <View style={styles.searchBarContainer}>
+            <Ionicons name="search" size={20} color="#6B7280" style={{ marginLeft: 16 }} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Ünvan axtar..."
+              value={addressSearch}
+              onChangeText={searchAddress}
+              returnKeyType="search"
+            />
+            {addressSearch.length > 0 && (
+              <Pressable onPress={() => { setAddressSearch(''); setAddressResults([]); Keyboard.dismiss(); }} style={{ padding: 12 }}>
+                <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+              </Pressable>
+            )}
+          </View>
+
+          {addressResults.length > 0 && (
+            <View style={styles.searchResults}>
+              <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 250 }}>
+                {addressResults.map((r, i) => (
+                  <Pressable
+                    key={i}
+                    style={styles.searchResultItem}
+                    onPress={() => {
+                      const lat = Number(r.lat);
+                      const lon = Number(r.lon);
+                      if (webRef.current) {
+                        webRef.current.injectJavaScript(`window.flyTo(${lat}, ${lon}); true;`);
+                      }
+                      setAddressSearch(r.display_name.split(',')[0]);
+                      setAddressResults([]);
+                      Keyboard.dismiss();
+                    }}
+                  >
+                    <Text style={styles.searchResultTitle} numberOfLines={1}>
+                      {r.name || r.display_name.split(',')[0]}
+                    </Text>
+                    <Text style={styles.searchResultSub} numberOfLines={2}>
+                      {r.display_name}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
       </View>
 
       <View style={[styles.floatingTopRight, { top: insets.top + 16 }]}>
@@ -449,6 +548,7 @@ export function SeekerMapScreen() {
         </Pressable>
       </View>
 
+      {!jobSelected && (
       <View style={[styles.floatingBottomRight, { bottom: insets.bottom + 160 }]}>
         <Pressable style={[styles.smCircleBtn, { marginBottom: 8 }]} onPress={() => {
             webRef.current?.injectJavaScript(`window.zoomInMap(); true;`);
@@ -471,6 +571,7 @@ export function SeekerMapScreen() {
           {hasActiveFilters ? <View style={styles.dot} /> : null}
         </Pressable>
       </View>
+      )}
 
       <View style={[styles.floatingBottomCenter, { bottom: insets.bottom + 95 }]}>
         <Pressable style={styles.pillBtn} onPress={() => nav.navigate('SeekerJobs')}>
@@ -583,13 +684,49 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#fff",
   },
-  dotPill: {
-    position: "absolute",
-    top: 10,
-    right: 16,
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: "#ff3b30",
+  searchInput: {
+    flex: 1,
+    height: "100%",
+    paddingHorizontal: 8,
+    fontSize: 16,
+    color: '#111827',
+  },
+  searchBarContainer: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 26,
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  searchResults: {
+    backgroundColor: 'rgba(255,255,255,0.98)',
+    borderRadius: 16,
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  searchResultItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  searchResultTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  searchResultSub: {
+    fontSize: 13,
+    color: '#6B7280',
   }
 });

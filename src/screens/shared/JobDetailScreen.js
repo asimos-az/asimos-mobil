@@ -12,6 +12,18 @@ import { RateUserModal } from "../../components/RateUserModal";
 import { useToast } from "../../context/ToastContext";
 import { getDeviceLocationOrNull } from "../../utils/deviceLocation";
 
+function formatDate(isoString) {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return "";
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const mins = String(date.getMinutes()).padStart(2, "0");
+  return `${day}.${month}.${year} ${hours}:${mins}`;
+}
+
 export function JobDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -69,6 +81,8 @@ export function JobDetailScreen() {
   const isTemporary = jt === "temporary";
   const isPermanent = jt === "permanent";
   const durationDays = (job.durationDays ?? job.duration_days ?? null);
+  const dateDisplay = formatDate(job?.created_at || job?.createdAt);
+  const rawWage = job?.wage ? String(job.wage).replace(/AZN|₼/gi, "").trim() : null;
 
   const status = (job.status || job.jobStatus || "open").toLowerCase();
   const isOwnerEmployer = useMemo(() => {
@@ -177,9 +191,15 @@ export function JobDetailScreen() {
             </View>
           ) : null}
 
+          {dateDisplay ? <Text style={styles.meta}>Paylaşılma tarixi: {dateDisplay}</Text> : null}
           {job.category ? <Text style={styles.meta}>Kateqoriya: {job.category}</Text> : null}
-          {job.wage ? <Text style={styles.meta}>Maaş: {job.wage}</Text> : null}
+          {rawWage ? (
+            <Text style={styles.meta}>
+              Maaş: <Text style={{ fontWeight: "900", color: "#111827" }}>{rawWage} <Text style={{ fontSize: 11, color: "#6B7280" }}>AZN</Text></Text>
+            </Text>
+          ) : null}
           {isTemporary && durationDays ? <Text style={styles.meta}>Müddət: {durationDays} gün</Text> : null}
+
 
           {/* Contact info is gated for guests */}
           {(job.whatsapp || job.phone || job.link) ? (
@@ -264,24 +284,27 @@ export function JobDetailScreen() {
 
           {job.voen ? <Text style={styles.meta}>VOEN: {job.voen}</Text> : null}
           {job.voen ? <Text style={styles.meta}>VOEN: {job.voen}</Text> : null}
-          {isAuthed && jobLoc?.address ? <Text style={styles.meta}>📍 {jobLoc.address}</Text> : null}
+          {jobLoc?.address ? <Text style={styles.meta}>📍 {jobLoc.address}</Text> : null}
 
-          {typeof job.distanceM === "number" ? <Text style={styles.meta}>Sənə məsafə: {job.distanceM} m</Text> : null}
+          <View style={{ height: 14 }} />
+          <Text style={styles.descTitle}>Xəritə</Text>
+          <Text style={styles.mapHint}>Yaşıl: elanın lokasiyası • Mavi: sənin lokasiyan • Böyütmək üçün xəritəyə toxun</Text>
+          <View style={{ height: 10 }} />
 
-          {isAuthed ? (
-            <>
-              <View style={{ height: 14 }} />
-              <Text style={styles.descTitle}>Xəritə</Text>
-              <Text style={styles.mapHint}>Yaşıl: elanın lokasiyası • Mavi: sənin lokasiyan • Böyütmək üçün xəritəyə toxun</Text>
-              <View style={{ height: 10 }} />
-
-              <Pressable onPress={() => navigation.navigate("JobMap", { job, userLocation: myLoc || userLoc })}>
-                <MapPreview userLocation={myLoc || userLoc} jobLocation={jobLoc} height={240} />
-                {/* Overlay to intercept touches but allow press */}
-                <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'transparent' }} />
-              </Pressable>
-            </>
-          ) : null}
+          <View style={{ position: 'relative' }}>
+            <MapPreview 
+              userLocation={myLoc || userLoc} 
+              jobLocation={jobLoc} 
+              height={240} 
+              jobTitle={job.title}
+              jobAddress={jobLoc?.address || ""}
+              jobWage={rawWage ? `${rawWage} AZN` : "Razılaşma ilə"}
+            />
+            <Pressable 
+              onPress={() => navigation.navigate("JobMap", { job, userLocation: myLoc || userLoc })}
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }}
+            />
+          </View>
 
           <View style={{ height: 14 }} />
           <Text style={styles.descTitle}>Təsvir</Text>

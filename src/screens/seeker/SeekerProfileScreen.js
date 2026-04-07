@@ -21,6 +21,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import { useAlert } from "../../context/AlertContext";
 import { MapPicker } from "../../components/MapPicker";
+import { Input } from "../../components/Input";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { registerForPushNotificationsAsync } from "../../utils/pushNotifications";
 import { getDeviceLocationOrNull } from "../../utils/deviceLocation";
@@ -190,6 +191,54 @@ export function SeekerProfileScreen() {
     setSoundName(item.id);
     setSoundPickerOpen(false);
     await AsyncStorage.setItem("ASIMOS_NOTIF_SOUND_NAME", item.id).catch(() => { });
+
+    if (soundEnabled && notifEnabled) {
+      await Notifications.scheduleNotificationAsync({
+        content: { 
+          title: "Səs sınağı", 
+          body: `${item.label} səs tonu belə eşidiləcək. (Fərqli səslər üçün sistem faylları tələb olunur)`,
+          sound: true
+        },
+        trigger: null,
+      });
+    } else if (!notifEnabled) {
+      toast.show("Səsi eşitmək üçün yuxarıdan Bildirişləri açın", "error");
+    } else if (!soundEnabled) {
+      toast.show("Səsi eşitmək üçün yuxarıdan Səsləri açın", "error");
+    }
+  }
+
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editField, setEditField] = useState(""); // 'fullName' or 'phone'
+  const [editValue, setEditValue] = useState("");
+  const [updateLoading, setUpdateLoading] = useState(false);
+
+  function openEdit(field, val) {
+    setEditField(field);
+    setEditValue(val || "");
+    setEditModalOpen(true);
+  }
+
+  const { updateProfile } = useAuth();
+
+  async function handleUpdateProfile() {
+    if (updateLoading) return;
+    const val = editValue.trim();
+    if (!val) {
+      toast.show("Məlumatı daxil edin", "error");
+      return;
+    }
+
+    setUpdateLoading(true);
+    try {
+      await updateProfile({ [editField]: val });
+      toast.show("Məlumat yeniləndi", "success");
+      setEditModalOpen(false);
+    } catch (e) {
+      toast.show(e?.message || "Xəta baş verdi", "error");
+    } finally {
+      setUpdateLoading(false);
+    }
   }
 
   return (
@@ -228,6 +277,31 @@ export function SeekerProfileScreen() {
         </Pressable>
       </Modal>
 
+      <Modal visible={editModalOpen} transparent animationType="fade" onRequestClose={() => setEditModalOpen(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setEditModalOpen(false)}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{editField === "fullName" ? "Adın redaktəsi" : "Telefonun redaktəsi"}</Text>
+            <Input
+              value={editValue}
+              onChangeText={setEditValue}
+              placeholder={editField === "fullName" ? "Ad Soyad" : "Telefon"}
+              keyboardType={editField === "phone" ? "phone-pad" : "default"}
+              autoFocus
+            />
+            <View style={{ marginTop: 12 }}>
+              <PrimaryButton
+                title="Yadda saxla"
+                onPress={handleUpdateProfile}
+                loading={updateLoading}
+              />
+            </View>
+            <TouchableOpacity style={styles.modalClose} onPress={() => setEditModalOpen(false)}>
+              <Text style={styles.modalCloseText}>İmtina</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
       <ScrollView style={styles.scrollFlex} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
         {/* CENTERED AVATAR & INFO */}
@@ -235,7 +309,12 @@ export function SeekerProfileScreen() {
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
-          <Text style={styles.userName}>{user?.fullName || "İş axtaran"}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center" }}>
+            <Text style={styles.userName}>{user?.fullName || "İş axtaran"}</Text>
+            <TouchableOpacity onPress={() => openEdit("fullName", user?.fullName)} style={{ marginLeft: 6 }}>
+              <Ionicons name="create-outline" size={16} color="#64748B" />
+            </TouchableOpacity>
+          </View>
           <Text style={styles.userEmail}>{user?.email || "Email qeyd edilməyib"}</Text>
         </View>
 
@@ -263,7 +342,10 @@ export function SeekerProfileScreen() {
           <View style={styles.cardGroup}>
             <View style={styles.listItem}>
               <Ionicons name="call-outline" size={20} color="#64748B" />
-              <Text style={styles.listItemText}>{user?.phone || "Telefon yoxdur"}</Text>
+              <Text style={[styles.listItemText, { flex: 1 }]}>{user?.phone || "Telefon yoxdur"}</Text>
+              <TouchableOpacity onPress={() => openEdit("phone", user?.phone)} style={styles.listActionBtn}>
+                  <Ionicons name="create-outline" size={20} color="#22C55E" />
+              </TouchableOpacity>
             </View>
             <View style={styles.divider} />
             <View style={styles.listItem}>

@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import { getDeviceLocationOrNull } from "../../utils/deviceLocation";
-import { Alert, FlatList, Pressable, StyleSheet, Text, View, DeviceEventEmitter } from "react-native";
+import { Alert, FlatList, Pressable, StyleSheet, Text, View, DeviceEventEmitter, ActivityIndicator } from "react-native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
 import { api } from "../../api/client";
@@ -36,11 +36,11 @@ export function SeekerJobsListScreen() {
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   const [filterOpen, setFilterOpen] = useState(false);
-
-  // const [activeTab, setActiveTab] = useState("employer");
-
 
   const [q, setQ] = useState("");
   const [radius, setRadius] = useState(0);
@@ -80,10 +80,10 @@ export function SeekerJobsListScreen() {
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener("asimos:pushReceived", () => {
       api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => { });
-      loadList();
+      loadList(null, 1);
     });
     return () => sub?.remove?.();
-  }, []);
+  }, [baseLocation, user?.location]);
 
   useEffect(() => {
     if (didInit.current) return;
@@ -91,19 +91,19 @@ export function SeekerJobsListScreen() {
 
     (async () => {
       if (user?.location) {
-        loadList(user.location);
+        loadList(user.location, 1);
       } else {
         setLoading(true);
         try {
           const fresh = await getDeviceLocationOrNull({ timeoutMs: 4000 });
           if (fresh) {
             setBaseLocation(fresh);
-            loadList(fresh);
+            loadList(fresh, 1);
           } else {
-            loadList(null);
+            loadList(null, 1);
           }
         } catch {
-          loadList(null);
+          loadList(null, 1);
         }
       }
     })();
@@ -141,44 +141,45 @@ export function SeekerJobsListScreen() {
     });
   }, [items, minWage, maxWage, selectedCategories]);
 
-  async function loadList(locOverride) {
+  async function loadList(locOverride, pageNumber = 1) {
     try {
       const loc = locOverride || baseLocation || user?.location;
-      setLoading(true);
+      if (pageNumber === 1) setLoading(true);
+      else setLoadingMore(true);
+
       const data = await api.listJobsWithSearch({
         q: q?.trim() || "",
         lat: loc?.lat,
         lng: loc?.lng,
         radius_m: (radius > 0 && loc?.lat && loc?.lng) ? radius : undefined,
-        radius_m: (radius > 0 && loc?.lat && loc?.lng) ? radius : undefined,
-        daily: undefined,
-        // jobType: "employer", // Removed to allow backend to decide default (mix)
-
-        // Actually, let's interpret "butun elanarl" as "all ads mixed" or just standard list.
-        // If we pass undefined to jobType, the backend defaults to employer only currently (based on previous ViewFile of backend).
-        // Let's check backend logic again or just default to 'employer' if undefined on backend.
-        // Wait, backend logic: if (jobTypeFilter === "seeker") ... else if (jobTypeFilter === "employer") ... else ... neq "seeker"
-
-
-
-
-
-
-
-
-
-
-
-
-
+        page: pageNumber,
+        limit: 20
       });
-      setItems(data);
+      
+      if (pageNumber === 1) {
+        setItems(data);
+      } else {
+        setItems(prev => [...prev, ...data]);
+      }
+      
+      if (data && data.length < 20) setHasMore(false);
+      else setHasMore(true);
+      
+      setPage(pageNumber);
     } catch (e) {
-      Alert.alert("Xəta", e.message);
+      if (pageNumber === 1) Alert.alert("Xəta", e.message);
     } finally {
-      setLoading(false);
+      if (pageNumber === 1) setLoading(false);
+      else setLoadingMore(false);
     }
   }
+
+  function fetchMore() {
+    if (!loading && !loadingMore && hasMore) {
+      loadList(null, page + 1);
+    }
+  }
+
 
   useEffect(() => {
     if (!baseLocation && user?.location) setBaseLocation(user.location);
@@ -262,7 +263,6 @@ export function SeekerJobsListScreen() {
       <View style={styles.top}>
         <View style={styles.titleRow}>
           <Text style={styles.brandTitle}>Asimos</Text>
-          <Text style={styles.pageTitle}>İş elanları</Text>
         </View>
 
         <View style={styles.headerActions}>
@@ -289,13 +289,16 @@ export function SeekerJobsListScreen() {
           data={filteredItems}
           keyExtractor={(it) => it.id}
           refreshing={loading}
-          onRefresh={loadList}
+          onRefresh={() => loadList(null, 1)}
+          onEndReached={fetchMore}
+          onEndReachedThreshold={0.3}
           contentContainerStyle={{ paddingBottom: 120 }}
           ListEmptyComponent={
             <Text style={styles.empty}>
               {loading ? "Yüklənir..." : "Nəticə yoxdur. Filterləri boşaldıb yenilə."}
             </Text>
           }
+          ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color={Colors.primary} style={{ padding: 20 }} /> : null}
           renderItem={({ item }) => (
             <JobCard
               job={item}
@@ -332,7 +335,7 @@ const styles = StyleSheet.create({
   brandTitle: {
     fontSize: 24,
     fontWeight: "900",
-    color: "#2563EB", 
+    color: Colors.text,
   },
   top: {
     paddingHorizontal: 16,

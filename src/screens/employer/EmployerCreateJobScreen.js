@@ -185,6 +185,7 @@ export function EmployerCreateJobScreen({ navigation }) {
         visible={mapOpen}
         initial={location}
         userLocation={user?.location || null}
+        radius={Number(notifyRadiusM) || 500}
         onClose={() => setMapOpen(false)}
         onPicked={(loc) => setLocation(loc)}
       />

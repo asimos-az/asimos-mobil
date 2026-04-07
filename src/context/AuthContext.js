@@ -227,6 +227,21 @@ export function AuthProvider({ children }) {
       return nextUser;
     },
 
+    updateProfile: async (payload) => {
+      try {
+        const res = await api.updateProfile(payload);
+        if (res?.user) {
+          const nextUser = { ...(res.user || {}) };
+          nextUser.role = normalizeRole(nextUser.role) || null;
+          await persist(token, refreshToken, nextUser);
+          return nextUser;
+        }
+        return user;
+      } catch (e) {
+        throw e;
+      }
+    },
+
     signOut: async () => {
       setIsSigningOut(true);
 

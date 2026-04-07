@@ -12,12 +12,24 @@ function formatDistance(distanceM) {
   return `${Math.round(distanceM)} m`;
 }
 
+function formatDate(isoString) {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return "";
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}.${month}.${year}`;
+}
+
 export function JobCard({ job, onPress, showDailyBadge = true }) {
   const isDaily = !!job?.isDaily;
-  const wageDisplay = job?.wage ? String(job.wage).replace("AZN", "₼") : "Razılaşma ilə";
   const distDisplay = formatDistance(job?.distanceM);
   const companyLabel = job?.company || "Asimos İşəgötürən";
   const typeLabel = job?.category || "Vakansiya";
+  const dateDisplay = formatDate(job?.created_at || job?.createdAt);
+  
+  const rawWage = job?.wage ? String(job.wage).replace(/AZN|₼/gi, "").trim() : null;
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.wrapper, pressed && styles.pressed]}>
@@ -38,10 +50,13 @@ export function JobCard({ job, onPress, showDailyBadge = true }) {
 
       <View style={styles.card}>
         <View style={styles.row}>
-          <Text style={styles.title} numberOfLines={1}>{job?.title || "Vakansiya"}</Text>
-          <Text style={styles.statusText} numberOfLines={1}>
-            {distDisplay ? `${distDisplay} uzaqda` : "Ətraflı bax"}
-          </Text>
+           <View style={{ flex: 1, paddingRight: 10 }}>
+              <Text style={styles.title} numberOfLines={1}>{job?.title || "Vakansiya"}</Text>
+           </View>
+           <View style={{ alignItems: "flex-end" }}>
+              {dateDisplay ? <Text style={styles.dateText}>{dateDisplay}</Text> : null}
+              {distDisplay ? <Text style={styles.statusText}>{distDisplay} uzaqda</Text> : <Text style={styles.statusText}>Ətraflı bax</Text>}
+           </View>
         </View>
 
         <View style={styles.rowTopMargin}>
@@ -50,7 +65,13 @@ export function JobCard({ job, onPress, showDailyBadge = true }) {
              <Text style={styles.meta} numberOfLines={1}>{typeLabel}</Text>
           </View>
           <View style={styles.rightCol}>
-             <Text style={styles.amount} numberOfLines={1}>{wageDisplay}</Text>
+            {rawWage ? (
+              <Text style={styles.amount} numberOfLines={1}>
+                {rawWage} <Text style={styles.currencyText}>AZN</Text>
+              </Text>
+            ) : (
+              <Text style={styles.amount} numberOfLines={1}>Razılaşma ilə</Text>
+            )}
           </View>
         </View>
       </View>
@@ -149,5 +170,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#111827",
+  },
+  dateText: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    marginBottom: 2,
+    fontWeight: "500",
+  },
+  currencyText: {
+    fontSize: 12,
+    color: "#6B7280",
+    fontWeight: "600",
   },
 });

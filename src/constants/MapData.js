@@ -1,0 +1,36 @@
+export const BAKU_METROS = [
+  { name: "İçərişəhər", lat: 40.3661, lng: 49.8335 },
+  { name: "Sahil", lat: 40.3707, lng: 49.8465 },
+  { name: "28 May", lat: 40.3797, lng: 49.8481 },
+  { name: "Gənclik", lat: 40.3995, lng: 49.8519 },
+  { name: "Nəriman Nərimanov", lat: 40.4029, lng: 49.8711 },
+  { name: "Ulduz", lat: 40.4150, lng: 49.9145 },
+  { name: "Koroğlu", lat: 40.4204, lng: 49.9171 },
+  { name: "Qara Qarayev", lat: 40.4170, lng: 49.9329 },
+  { name: "Neftçilər", lat: 40.4111, lng: 49.9427 },
+  { name: "Xalqlar Dostluğu", lat: 40.3973, lng: 49.9531 },
+  { name: "Əhmədli", lat: 40.3855, lng: 49.9540 },
+  { name: "Həzi Aslanov", lat: 40.3725, lng: 49.9535 },
+  { name: "Nizami", lat: 40.3797, lng: 49.8302 },
+  { name: "Elmlər Akademiyası", lat: 40.3751, lng: 49.8155 },
+  { name: "İnşaatçılar", lat: 40.3891, lng: 49.8037 },
+  { name: "20 Yanvar", lat: 40.4034, lng: 49.8080 },
+  { name: "Memar Əcəmi", lat: 40.4110, lng: 49.8115 },
+  { name: "Nəsimi", lat: 40.4278, lng: 49.8105 },
+  { name: "Azadlıq Prospekti", lat: 40.4300, lng: 49.8250 },
+  { name: "Dərnəgül", lat: 40.4285, lng: 49.8510 },
+  { name: "Xətai", lat: 40.3821, lng: 49.8752 },
+  { name: "Avtovağzal", lat: 40.4215, lng: 49.7941 },
+  { name: "8 Noyabr", lat: 40.4005, lng: 49.8248 },
+];
+
+export const BAKU_UNIVERSITIES = [
+  { name: "BDU", lat: 40.3758, lng: 49.8131 },
+  { name: "UNEC", lat: 40.3670, lng: 49.8315 },
+  { name: "ADNSU", lat: 40.3782, lng: 49.8475 },
+  { name: "ADA", lat: 40.4000, lng: 49.8500 },
+  { name: "ADU", lat: 40.3888, lng: 49.8465 },
+  { name: "BSU", lat: 40.3900, lng: 49.8460 },
+  { name: "ATU", lat: 40.3951, lng: 49.8315 },
+  { name: "Xəzər Uni", lat: 40.4111, lng: 49.9427 }, // Neftchilar branch area
+];

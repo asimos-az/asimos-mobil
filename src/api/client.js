@@ -155,13 +155,18 @@ export const api = {
   forgotPassword: (email) => request("/auth/forgot-password", { method: "POST", body: { email } }),
   resetPassword: (payload) => request("/auth/reset-password", { method: "POST", body: payload }),
 
+  updateProfile: (payload) => {
+    if ('fullName' in payload) return request("/me/name", { method: "PATCH", body: payload });
+    if ('phone' in payload) return request("/me/phone", { method: "PATCH", body: payload });
+    return Promise.resolve(null);
+  },
   updateMyLocation: (location) => request("/me/location", { method: "PATCH", body: { location } }),
   setPushToken: (expoPushToken) => request("/me/push-token", { method: "POST", body: { expoPushToken } }),
   clearPushToken: () => request("/me/push-token", { method: "DELETE" }),
 
   listJobs: () => request("/jobs"),
   listMyJobs: (createdBy) => request(`/jobs?createdBy=${encodeURIComponent(createdBy)}`),
-  listJobsWithSearch: ({ q, lat, lng, radius_m, daily, jobType, minWage, maxWage, categories }) => request(`/jobs${qs({ q, lat, lng, radius_m, daily, jobType, minWage, maxWage, categories: Array.isArray(categories) ? categories.join(",") : categories })}`),
+  listJobsWithSearch: ({ q, lat, lng, radius_m, daily, jobType, minWage, maxWage, categories, page, limit }) => request(`/jobs${qs({ q, lat, lng, radius_m, daily, jobType, minWage, maxWage, categories: Array.isArray(categories) ? categories.join(",") : categories, page, limit })}`),
   getJobById: (id) => request(`/jobs/${encodeURIComponent(String(id))}`),
   createJob: (payload) => request("/jobs", { method: "POST", body: payload }),
   closeJob: (id, { reason } = {}) => request(`/jobs/${encodeURIComponent(String(id))}/close`, { method: "PATCH", body: { reason } }),

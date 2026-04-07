@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
-import { Alert, FlatList, Pressable, StyleSheet, Text, View, DeviceEventEmitter } from "react-native";
+import { Alert, FlatList, Pressable, StyleSheet, Text, View, DeviceEventEmitter, ActivityIndicator } from "react-native";
 import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
 import { api } from "../../api/client";
@@ -35,6 +35,9 @@ export function SeekerDailyJobsScreen() {
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   const [filterOpen, setFilterOpen] = useState(false);
 
@@ -76,15 +79,15 @@ export function SeekerDailyJobsScreen() {
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener("asimos:pushReceived", () => {
       api.getUnreadNotificationsCount().then((r) => setUnread(r?.unread || 0)).catch(() => { });
-      loadList();
+      loadList(null, 1);
     });
     return () => sub?.remove?.();
-  }, []);
+  }, [baseLocation, user?.location]);
 
   useEffect(() => {
     if (didInit.current) return;
     didInit.current = true;
-    loadList();
+    loadList(null, 1);
   }, []);
 
   const radiusOptions = useMemo(() => RADIUS_PRESETS.map((x) => ({ label: x.label, value: x.value })), []);
@@ -119,24 +122,45 @@ export function SeekerDailyJobsScreen() {
     });
   }, [items, minWage, maxWage, selectedCategories]);
 
-  async function loadList(locOverride) {
+  async function loadList(locOverride, pageNumber = 1) {
     try {
       const loc = locOverride || baseLocation || user?.location;
       if (radius > 0 && (!loc?.lat || !loc?.lng)) return;
 
-      setLoading(true);
+      if (pageNumber === 1) setLoading(true);
+      else setLoadingMore(true);
+
       const data = await api.listJobsWithSearch({
         q: q?.trim() || "",
         lat: loc?.lat,
         lng: loc?.lng,
         radius_m: (radius > 0 && loc?.lat && loc?.lng) ? radius : undefined,
         daily: true,
+        page: pageNumber,
+        limit: 20
       });
-      setItems(data);
+      
+      if (pageNumber === 1) {
+        setItems(data);
+      } else {
+        setItems(prev => [...prev, ...data]);
+      }
+      
+      if (data && data.length < 20) setHasMore(false);
+      else setHasMore(true);
+      
+      setPage(pageNumber);
     } catch (e) {
-      Alert.alert("Xəta", e.message);
+      if (pageNumber === 1) Alert.alert("Xəta", e.message);
     } finally {
-      setLoading(false);
+      if (pageNumber === 1) setLoading(false);
+      else setLoadingMore(false);
+    }
+  }
+
+  function fetchMore() {
+    if (!loading && !loadingMore && hasMore) {
+      loadList(null, page + 1);
     }
   }
 
@@ -245,13 +269,16 @@ export function SeekerDailyJobsScreen() {
           data={filteredItems}
           keyExtractor={(it) => it.id}
           refreshing={loading}
-          onRefresh={loadList}
+          onRefresh={() => loadList(null, 1)}
+          onEndReached={fetchMore}
+          onEndReachedThreshold={0.3}
           contentContainerStyle={{ paddingBottom: 120 }}
           ListEmptyComponent={
             <Text style={styles.empty}>
               {loading ? "Yüklənir..." : "Nəticə yoxdur. Filterləri boşaldıb yenilə."}
             </Text>
           }
+          ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color={Colors.primary} style={{ padding: 20 }} /> : null}
           renderItem={({ item }) => (
             <JobCard
               job={item}
