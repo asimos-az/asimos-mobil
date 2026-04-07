@@ -18,6 +18,13 @@ import { Platform } from "react-native";
 
 const MS_DAY = 24 * 60 * 60 * 1000;
 
+function formatClock(ts) {
+  const d = new Date(ts);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
 export function EmployerCreateJobScreen({ navigation }) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -41,6 +48,11 @@ export function EmployerCreateJobScreen({ navigation }) {
   const [endTime, setEndTime] = useState(new Date().setHours(18, 0, 0, 0));
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
+
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [publishedAt, setPublishedAt] = useState(Date.now() + 60 * 60 * 1000);
+  const [showPublishDatePicker, setShowPublishDatePicker] = useState(false);
+  const [showPublishTimePicker, setShowPublishTimePicker] = useState(false);
 
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [categoryOptions, setCategoryOptions] = useState([]); // string[] (names, flattened)
@@ -140,6 +152,10 @@ export function EmployerCreateJobScreen({ navigation }) {
         toast.show("Lokasiya seç.", "error");
         return;
       }
+      if (scheduleEnabled && Number(publishedAt) <= Date.now()) {
+        toast.show("Yayım tarixi və saatı gələcək vaxt olmalıdır.", "error");
+        return;
+      }
 
       const res = await api.createJob({
         title,
@@ -162,6 +178,7 @@ export function EmployerCreateJobScreen({ navigation }) {
         end_time: workType !== "agreement" ? new Date(endTime).toLocaleTimeString("az-AZ", { hour: "2-digit", minute: "2-digit" }) : null,
 
         notifyRadiusM: notifyRadiusM ? Number(notifyRadiusM) : null,
+        publishedAt: scheduleEnabled ? new Date(publishedAt).toISOString() : null,
         createdBy: user.id,
         location,
       });
@@ -251,9 +268,9 @@ export function EmployerCreateJobScreen({ navigation }) {
                 value={durationPreset}
                 onChange={setDurationPreset}
                 options={[
-                  { label: "1", value: "1" },
-                  { label: "3", value: "3" },
-                  { label: "10", value: "10" },
+                  { label: "1 gün", value: "1" },
+                  { label: "3 gün", value: "3" },
+                  { label: "10 gün", value: "10" },
                   { label: "Digər", value: "other" },
                 ]}
               />
@@ -270,8 +287,12 @@ export function EmployerCreateJobScreen({ navigation }) {
               ) : null}
             </View>
           ) : null}
-
-          {expiryHint ? <Text style={styles.help}>{expiryHint}</Text> : null}
+          {expiryHint ? (
+            <View style={styles.hintBox}>
+              <Ionicons name="information-circle" size={20} color="#0284C7" />
+              <Text style={styles.hintText}>{expiryHint}</Text>
+            </View>
+          ) : null}
 
           <SelectField
             label="Kateqoriya"
@@ -315,7 +336,7 @@ export function EmployerCreateJobScreen({ navigation }) {
                   onPress={() => setShowStartPicker(true)}
                 >
                   <Text style={styles.timeText}>
-                    {new Date(startTime).toLocaleTimeString("az-AZ", { hour: "2-digit", minute: "2-digit" })}
+                    {new Date(startTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}
                   </Text>
                   <Ionicons name="time-outline" size={18} color={Colors.primary} />
                 </Pressable>
@@ -340,7 +361,7 @@ export function EmployerCreateJobScreen({ navigation }) {
                   onPress={() => setShowEndPicker(true)}
                 >
                   <Text style={styles.timeText}>
-                    {new Date(endTime).toLocaleTimeString("az-AZ", { hour: "2-digit", minute: "2-digit" })}
+                    {new Date(endTime).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}
                   </Text>
                   <Ionicons name="time-outline" size={18} color={Colors.primary} />
                 </Pressable>
@@ -415,6 +436,73 @@ export function EmployerCreateJobScreen({ navigation }) {
           />
           <Text style={styles.help}>Xəritədə axtarış edib lokasiyanı seç.</Text>
 
+          <View style={{ height: 18 }} />
+
+          <Text style={styles.label}>Elanın yayımı</Text>
+          <SegmentedControl
+            value={scheduleEnabled ? "scheduled" : "now"}
+            onChange={(v) => setScheduleEnabled(v === "scheduled")}
+            options={[
+              { label: "Dərhal", value: "now" },
+              { label: "Planlı", value: "scheduled" },
+            ]}
+          />
+
+          {scheduleEnabled ? (
+            <View style={{ marginTop: 12 }}>
+              <Text style={[styles.label, { fontSize: 13, marginBottom: 6 }]}>Yayım tarixi və saatı</Text>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <Pressable style={[styles.timeBtn, { flex: 1 }]} onPress={() => setShowPublishDatePicker(true)}>
+                  <Text style={styles.timeText}>
+                    {new Date(publishedAt).toLocaleDateString("az-AZ")}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={18} color={Colors.primary} />
+                </Pressable>
+                <Pressable style={[styles.timeBtn, { flex: 1 }]} onPress={() => setShowPublishTimePicker(true)}>
+                  <Text style={styles.timeText}>
+                    {formatClock(publishedAt)}
+                  </Text>
+                  <Ionicons name="time-outline" size={18} color={Colors.primary} />
+                </Pressable>
+              </View>
+
+              {showPublishDatePicker && (
+                <DateTimePicker
+                  value={new Date(publishedAt)}
+                  mode="date"
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={(event, selectedDate) => {
+                    setShowPublishDatePicker(false);
+                    if (!selectedDate) return;
+                    const cur = new Date(publishedAt);
+                    const next = new Date(selectedDate);
+                    next.setHours(cur.getHours(), cur.getMinutes(), 0, 0);
+                    setPublishedAt(next.getTime());
+                  }}
+                />
+              )}
+
+              {showPublishTimePicker && (
+                <DateTimePicker
+                  value={new Date(publishedAt)}
+                  mode="time"
+                  is24Hour={true}
+                  display={Platform.OS === "ios" ? "spinner" : "default"}
+                  onChange={(event, selectedDate) => {
+                    setShowPublishTimePicker(false);
+                    if (!selectedDate) return;
+                    const cur = new Date(publishedAt);
+                    const next = new Date(cur);
+                    next.setHours(selectedDate.getHours(), selectedDate.getMinutes(), 0, 0);
+                    setPublishedAt(next.getTime());
+                  }}
+                />
+              )}
+
+              <Text style={styles.help}>Admin təsdiqləsə belə elan seçdiyiniz tarix/saatda aktivləşəcək.</Text>
+            </View>
+          ) : null}
+
           <View style={{ height: 10 }} />
 
           <Input
@@ -460,6 +548,24 @@ const styles = StyleSheet.create({
   scroll: { padding: 16, paddingBottom: 160 },
   label: { color: Colors.muted, marginBottom: 6, fontWeight: "900" },
   help: { marginTop: 8, color: Colors.muted, fontSize: 12, fontWeight: "700" },
+  hintBox: {
+    marginTop: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0F9FF",
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
+    padding: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  hintText: {
+    color: "#0369A1",
+    fontSize: 13,
+    fontWeight: "600",
+    flex: 1,
+    lineHeight: 18,
+  },
   timeBtn: {
     flexDirection: "row",
     alignItems: "center",

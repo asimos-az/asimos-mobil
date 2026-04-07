@@ -21,6 +21,13 @@ export function EmployerJobCard({ job, onPress, onToggleStatus, loading, readonl
             borderColor: "#FEF08A",
             icon: "time-outline"
         },
+        scheduled: {
+            label: "Planlı",
+            color: "#2563EB",
+            bg: "#EFF6FF",
+            borderColor: "#BFDBFE",
+            icon: "calendar-outline"
+        },
         closed: {
             label: "Bağlı",
             color: "#DC2626",
@@ -41,8 +48,38 @@ export function EmployerJobCard({ job, onPress, onToggleStatus, loading, readonl
     const currentStatus = statusConfig[status] || statusConfig.open;
     const isClosed = status === "closed";
 
-    const wageDisplay = job.wage ? job.wage.replace("AZN", "₼") : "—";
+    const wageDisplay = job.wage ? (String(job.wage).replace(/AZN|₼/gi, "").trim() + " AZN") : "—";
     const typeLabel = job.category || "Vakansiya";
+
+    let radiusDisplay = "";
+    if (typeof job.notifyRadiusM === "number") {
+        let r = job.notifyRadiusM;
+        if (r >= 1000) {
+            let km = r / 1000;
+            radiusDisplay = (Number.isInteger(km) ? km : km.toFixed(1)) + " km Radius";
+        } else {
+            radiusDisplay = r + " m Radius";
+        }
+    }
+
+    const createdDate = job.publishedAt || job.published_at || job.createdAt || job.created_at;
+
+    function formatDateTime(ts) {
+        const d = new Date(ts);
+        if (isNaN(d.getTime())) return null;
+        const dd = String(d.getDate()).padStart(2, "0");
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const yyyy = d.getFullYear();
+        const hh = String(d.getHours()).padStart(2, "0");
+        const min = String(d.getMinutes()).padStart(2, "0");
+        return `${dd}.${mm}.${yyyy} ${hh}:${min}`;
+    }
+
+    let badgeRightText = isDaily ? "Gündəlik iş" : "Elan";
+    if (createdDate) {
+        const dateStr = formatDateTime(createdDate);
+        if (dateStr) badgeRightText = dateStr + " • " + badgeRightText;
+    }
 
     return (
         <Pressable
@@ -60,16 +97,16 @@ export function EmployerJobCard({ job, onPress, onToggleStatus, loading, readonl
                 <View style={styles.row}>
                     <Text style={styles.title} numberOfLines={1}>{job.title || "Vakansiya"}</Text>
                     <Text style={styles.statusText} numberOfLines={1}>
-                        {isDaily ? "Gündəlik iş" : "Elan"}
+                        {badgeRightText}
                     </Text>
                 </View>
 
                 <View style={styles.rowTopMargin}>
                     <View style={styles.leftCol}>
                         <Text style={styles.meta} numberOfLines={1}>{typeLabel}</Text>
-                        {typeof job.notifyRadiusM === "number" && (
-                            <Text style={styles.meta} numberOfLines={1}>{job.notifyRadiusM}m Radius</Text>
-                        )}
+                        {radiusDisplay ? (
+                            <Text style={styles.meta} numberOfLines={1}>{radiusDisplay}</Text>
+                        ) : null}
                     </View>
                     <View style={styles.rightCol}>
                         <Text style={styles.amount} numberOfLines={1}>{wageDisplay}</Text>

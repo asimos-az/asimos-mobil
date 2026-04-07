@@ -376,34 +376,7 @@ export function SeekerProfileScreen() {
                 thumbColor="#fff"
               />
             </View>
-            <View style={styles.divider} />
-            <View style={styles.listItem}>
-              <Ionicons name={soundEnabled ? "volume-high-outline" : "volume-mute-outline"} size={20} color="#64748B" />
-              <Text style={styles.listItemText}>Səslər</Text>
-              <Switch
-                value={soundEnabled}
-                onValueChange={toggleSound}
-                disabled={soundLoading}
-                trackColor={{ false: '#E2E8F0', true: '#22C55E' }}
-                thumbColor="#fff"
-              />
-            </View>
 
-            {soundEnabled && (
-              <>
-                <View style={styles.divider} />
-                <TouchableOpacity style={styles.listItem} onPress={() => setSoundPickerOpen(true)}>
-                  <Ionicons name="musical-notes-outline" size={20} color="#64748B" />
-                  <Text style={styles.listItemText}>Səs tonu</Text>
-                  <View style={styles.flexRowRight}>
-                    <Text style={styles.listValueText}>
-                      {SOUND_OPTIONS.find((s) => s.id === soundName)?.label || "Defolt"}
-                    </Text>
-                    <Ionicons name="chevron-forward" size={16} color="#94A3B8" style={{ marginLeft: 4 }} />
-                  </View>
-                </TouchableOpacity>
-              </>
-            )}
           </View>
         </View>
 

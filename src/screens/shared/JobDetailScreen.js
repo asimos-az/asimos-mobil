@@ -24,6 +24,26 @@ function formatDate(isoString) {
   return `${day}.${month}.${year} ${hours}:${mins}`;
 }
 
+function getDistanceKM(loc1, loc2) {
+  const l1Lat = loc1?.lat;
+  const l1Lng = loc1?.lng || loc1?.lon;
+  const l2Lat = loc2?.lat;
+  const l2Lng = loc2?.lng || loc2?.lon;
+
+  if (!l1Lat || !l1Lng || !l2Lat || !l2Lng) return null;
+
+  const R = 6371; // km
+  const dLat = (l2Lat - l1Lat) * Math.PI / 180;
+  const dLon = (l2Lng - l1Lng) * Math.PI / 180;
+  const lat1 = (l1Lat) * Math.PI / 180;
+  const lat2 = (l2Lat) * Math.PI / 180;
+
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2); 
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  return R * c;
+}
+
 export function JobDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -76,12 +96,21 @@ export function JobDetailScreen() {
 
   const jobLoc = job?.location || null;
   const userLoc = user?.location || null;
+  const currentLoc = myLoc || userLoc;
+
+  const distanceKM = useMemo(() => getDistanceKM(currentLoc, jobLoc), [currentLoc, jobLoc]);
+  const distanceDisplay = useMemo(() => {
+    if (distanceKM === null) return null;
+    if (distanceKM < 1) return `${(distanceKM * 1000).toFixed(0)} metr`;
+    return `${distanceKM.toFixed(1)} km`;
+  }, [distanceKM]);
 
   const jt = (job.jobType || job.job_type || (job.isDaily ? "temporary" : null));
   const isTemporary = jt === "temporary";
   const isPermanent = jt === "permanent";
   const durationDays = (job.durationDays ?? job.duration_days ?? null);
-  const dateDisplay = formatDate(job?.created_at || job?.createdAt);
+  const publishDate = job?.publishedAt || job?.published_at || job?.created_at || job?.createdAt;
+  const dateDisplay = formatDate(publishDate);
   const rawWage = job?.wage ? String(job.wage).replace(/AZN|₼/gi, "").trim() : null;
 
   const status = (job.status || job.jobStatus || "open").toLowerCase();
@@ -170,13 +199,14 @@ export function JobDetailScreen() {
             <View style={{ marginTop: 10 }}>
               <Text style={styles.meta}>Status: {
                 status === "pending" ? "Gözləyir (Yoxlanışda)" :
+                  status === "scheduled" ? "Planlı (Tarix/Saat gözlənir)" :
                   status === "closed" ? "Bağlı" :
                     "Aktiv"
               }</Text>
               <View style={styles.actions}>
-                {status === "pending" ? (
+                {status === "pending" || status === "scheduled" ? (
                   <View style={[styles.actionBtn, { borderColor: "#F59E0B", backgroundColor: "#FEF3C7" }]}>
-                    <Text style={[styles.actionBtnText, { color: "#D97706" }]}>Moderasiya gözləyir</Text>
+                    <Text style={[styles.actionBtnText, { color: "#D97706" }]}>{status === "scheduled" ? "Yayım vaxtını gözləyir" : "Moderasiya gözləyir"}</Text>
                   </View>
                 ) : status === "closed" ? (
                   <Pressable onPress={reopenJob} disabled={saving} style={[styles.actionBtn, styles.actionBtnPrimary, saving && { opacity: 0.6 }]}>
@@ -191,7 +221,8 @@ export function JobDetailScreen() {
             </View>
           ) : null}
 
-          {dateDisplay ? <Text style={styles.meta}>Paylaşılma tarixi: {dateDisplay}</Text> : null}
+          {dateDisplay ? <Text style={styles.meta}>{job?.publishedAt || job?.published_at ? "Planlanan yayım vaxtı" : "Paylaşılma tarixi"}: {dateDisplay}</Text> : null}
+          {(job.company_name || job.companyName) ? <Text style={styles.meta}>Şirkət/Obyekt: {job.company_name || job.companyName}</Text> : null}
           {job.category ? <Text style={styles.meta}>Kateqoriya: {job.category}</Text> : null}
           {rawWage ? (
             <Text style={styles.meta}>
@@ -199,6 +230,7 @@ export function JobDetailScreen() {
             </Text>
           ) : null}
           {isTemporary && durationDays ? <Text style={styles.meta}>Müddət: {durationDays} gün</Text> : null}
+          {(job.start_time && job.end_time) ? <Text style={styles.meta}>İş qrafiki: {job.start_time} - {job.end_time}</Text> : null}
 
 
           {/* Contact info is gated for guests */}
@@ -283,7 +315,7 @@ export function JobDetailScreen() {
           ) : null}
 
           {job.voen ? <Text style={styles.meta}>VOEN: {job.voen}</Text> : null}
-          {job.voen ? <Text style={styles.meta}>VOEN: {job.voen}</Text> : null}
+          {distanceDisplay ? <Text style={styles.meta}>Səndən məsafə: <Text style={{fontWeight: "900", color: "#111827"}}>{distanceDisplay}</Text></Text> : null}
           {jobLoc?.address ? <Text style={styles.meta}>📍 {jobLoc.address}</Text> : null}
 
           <View style={{ height: 14 }} />

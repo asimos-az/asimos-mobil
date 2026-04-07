@@ -82,31 +82,40 @@ function EmployerTabBar({ state, descriptors, navigation }) {
     else navigation.navigate("EmployerCreateJob");
   }
 
+  function renderTab(route) {
+    if (!route) return null;
+    const isFocused = route.name === focusedName;
+    const conf = tabs[route.name] || tabs.EmployerJobs;
+    return (
+      <Pressable
+        key={route.key}
+        onPress={() => goTo(route.name)}
+        style={[styles.item, isFocused && styles.itemActive]}
+        accessibilityRole="button"
+        accessibilityState={isFocused ? { selected: true } : {}}
+        accessibilityLabel={descriptors[route.key]?.options?.tabBarAccessibilityLabel || conf.label}
+        hitSlop={10}
+      >
+        <Ionicons name={isFocused ? conf.iconActive : conf.icon} size={22} color={isFocused ? "#FFFFFF" : "#8E8E93"} />
+        {isFocused ? <Text style={styles.itemText}>{conf.label}</Text> : null}
+      </Pressable>
+    );
+  }
+
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom: bottomOffset }]}>
       <View style={styles.tabBar}>
-        {state.routes.map((route) => {
-          const isFocused = route.name === focusedName;
-          const conf = tabs[route.name] || tabs.EmployerJobs;
-          return (
-            <Pressable
-              key={route.key}
-              onPress={() => goTo(route.name)}
-              style={[styles.item, isFocused && styles.itemActive]}
-              accessibilityRole="button"
-              accessibilityState={isFocused ? { selected: true } : {}}
-              accessibilityLabel={descriptors[route.key]?.options?.tabBarAccessibilityLabel || conf.label}
-              hitSlop={10}
-            >
-              <Ionicons name={isFocused ? conf.iconActive : conf.icon} size={22} color={isFocused ? "#FFFFFF" : "#8E8E93"} />
-              {isFocused ? <Text style={styles.itemText}>{conf.label}</Text> : null}
-            </Pressable>
-          );
-        })}
+        <View style={styles.sideItemLeft}>
+          {renderTab(state.routes[0])}
+        </View>
 
-        <Pressable onPress={goCreateJob} style={styles.centerBtn} hitSlop={12} accessibilityRole="button" accessibilityLabel="Vakansiya yarat">
-          <Ionicons name="add" size={24} color="#111111" />
+        <Pressable onPress={goCreateJob} style={styles.centerBtn} hitSlop={12} accessibilityRole="button" accessibilityLabel="Yeni elan">
+          <Ionicons name="add" size={28} color="#FFFFFF" />
         </Pressable>
+
+        <View style={styles.sideItemRight}>
+          {renderTab(state.routes[1])}
+        </View>
       </View>
     </View>
   );
@@ -174,14 +183,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
   },
+  sideItemLeft: {
+    flex: 1,
+    alignItems: "flex-start",
+  },
+  sideItemRight: {
+    flex: 1,
+    alignItems: "flex-end",
+  },
   centerBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    backgroundColor: Colors.primary,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F7F7F7",
-    borderWidth: 1,
-    borderColor: "#ECECEC",
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
 });

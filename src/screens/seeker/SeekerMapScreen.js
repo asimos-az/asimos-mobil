@@ -8,6 +8,7 @@ import * as Location from "expo-location";
 import { api } from "../../api/client";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { JobsFilterModal } from "../../components/JobsFilterModal";
+import { MapPicker } from "../../components/MapPicker";
 import * as Notifications from "expo-notifications";
 
 const RADIUS_PRESETS = [
@@ -31,6 +32,8 @@ export function SeekerMapScreen() {
   const webRef = useRef(null);
 
   const [filterOpen, setFilterOpen] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+  const [filterLocation, setFilterLocation] = useState(null);
   const [q, setQ] = useState("");
   const [radius, setRadius] = useState(0);
   const [minWage, setMinWage] = useState("");
@@ -94,8 +97,8 @@ export function SeekerMapScreen() {
         minWage: minWage || undefined,
         maxWage: maxWage || undefined,
         categories: selectedCategories.length > 0 ? selectedCategories : undefined,
-        lat: userLocation?.lat,
-        lng: userLocation?.lng,
+        lat: (filterLocation || userLocation)?.lat,
+        lng: (filterLocation || userLocation)?.lng,
       });
       setJobs(data);
     } catch (e) {
@@ -161,8 +164,9 @@ export function SeekerMapScreen() {
   }, []);
 
   const html = useMemo(() => {
-    const uLat = (typeof userLocation?.lat === "number") ? Number(userLocation.lat) : null;
-    const uLng = (typeof userLocation?.lng === "number") ? Number(userLocation.lng) : null;
+    const activeLoc = filterLocation || userLocation;
+    const uLat = (typeof activeLoc?.lat === "number") ? Number(activeLoc.lat) : null;
+    const uLng = (typeof activeLoc?.lng === "number") ? Number(activeLoc.lng) : null;
 
     const jobsData = JSON.stringify(jobs.map(j => ({
       id: j.id,
@@ -258,10 +262,10 @@ export function SeekerMapScreen() {
     <div class="card-actions">
        <button class="card-btn primary" id="card-btn">Detallara bax</button>
        <button class="card-btn" id="gmap-btn" style="flex:0; padding:0 14px; background:#E5E7EB; margin-left:4px; display:flex; align-items:center; justify-content:center;">
-           <svg viewBox="0 0 24 24" width="22" height="22" fill="#4285F4"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+           <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Google_Maps_icon.svg" width="22" height="22" alt="Google Maps" />
        </button>
        <button class="card-btn" id="waze-btn" style="flex:0; padding:0 14px; background:#E5E7EB; margin-left:4px; display:flex; align-items:center; justify-content:center;">
-           <svg viewBox="0 0 24 24" width="24" height="24" fill="#33CCFF"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
+           <img src="https://upload.wikimedia.org/wikipedia/commons/8/81/Waze_logo.svg" width="22" height="22" alt="Waze" />
        </button>
     </div>
   </div>
@@ -404,10 +408,10 @@ export function SeekerMapScreen() {
       if(selectedJob) send('openJob', selectedJob.id);
     });
     document.getElementById('gmap-btn').addEventListener('click', () => {
-      if(selectedJob) send('openGmap', selectedJob);
+      if(selectedJob) send('openGmap', { lat: selectedJob.lat, lng: selectedJob.lng });
     });
     document.getElementById('waze-btn').addEventListener('click', () => {
-      if(selectedJob) send('openWaze', selectedJob);
+      if(selectedJob) send('openWaze', { lat: selectedJob.lat, lng: selectedJob.lng });
     });
     
     document.getElementById('card-close').addEventListener('click', () => {
@@ -419,7 +423,7 @@ export function SeekerMapScreen() {
   </script>
 </body>
 </html>`;
-  }, [jobs, userLocation]);
+  }, [jobs, userLocation, filterLocation]);
 
   const hasActiveFilters = !!(q?.trim() || minWage || maxWage || (selectedCategories?.length) || radius > 0);
 
@@ -440,13 +444,23 @@ export function SeekerMapScreen() {
         categories={categories}
         selectedCategories={selectedCategories}
         toggleCategory={toggleCategory}
-        baseLocation={userLocation}
+        baseLocation={filterLocation || userLocation}
+        onPickLocation={() => setMapOpen(true)}
         onReset={resetFilters}
         onApply={() => {
           setFilterOpen(false);
           loadJobs();
         }}
         onClose={() => setFilterOpen(false)}
+      />
+      <MapPicker
+        visible={mapOpen}
+        initial={filterLocation || userLocation}
+        userLocation={userLocation}
+        onClose={() => setMapOpen(false)}
+        onPicked={(loc) => {
+          setFilterLocation(loc);
+        }}
       />
 
       <WebView

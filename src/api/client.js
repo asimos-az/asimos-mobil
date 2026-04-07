@@ -166,6 +166,7 @@ export const api = {
 
   listJobs: () => request("/jobs"),
   listMyJobs: (createdBy) => request(`/jobs?createdBy=${encodeURIComponent(createdBy)}`),
+  activateDueJobs: () => request("/jobs/activate-due", { method: "POST" }),
   listJobsWithSearch: ({ q, lat, lng, radius_m, daily, jobType, minWage, maxWage, categories, page, limit }) => request(`/jobs${qs({ q, lat, lng, radius_m, daily, jobType, minWage, maxWage, categories: Array.isArray(categories) ? categories.join(",") : categories, page, limit })}`),
   getJobById: (id) => request(`/jobs/${encodeURIComponent(String(id))}`),
   createJob: (payload) => request("/jobs", { method: "POST", body: payload }),

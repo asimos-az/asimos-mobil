@@ -21,12 +21,18 @@ export function EmployerJobsScreen() {
   const [statusTab, setStatusTab] = useState("open");
 
   const filteredItems = useMemo(() => {
-    return items.filter(it => it.status === statusTab);
+    return items.filter((it) => {
+      const s = String(it?.status || "").toLowerCase();
+      if (statusTab === "pending") return s === "pending" || s === "scheduled";
+      return s === statusTab;
+    });
   }, [items, statusTab]);
 
   async function load() {
     try {
       setLoading(true);
+      // Trigger server-side activation of due scheduled jobs before fetching.
+      await api.activateDueJobs().catch(() => {});
       const data = await api.listMyJobs(user.id);
       setItems(data);
     } catch (e) {
@@ -177,7 +183,7 @@ export function EmployerJobsScreen() {
         ListEmptyComponent={
           <Text style={styles.empty}>
             {statusTab === "open" && "Aktiv elanınız yoxdur."}
-            {statusTab === "pending" && "Yoxlanılan elanınız yoxdur."}
+            {statusTab === "pending" && "Yoxlanılan və planlı elanınız yoxdur."}
             {statusTab === "rejected" && "Rədd edilmiş elanınız yoxdur."}
             {statusTab === "closed" && "Deaktiv elanınız yoxdur."}
           </Text>
