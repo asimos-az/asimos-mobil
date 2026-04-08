@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
 
   floatBtnWrap: {
     position: 'absolute',
-    bottom: 72,
+    bottom: 44,
     right: 16,
     zIndex: 99
   },
