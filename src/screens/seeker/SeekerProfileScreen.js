@@ -546,25 +546,6 @@ export function SeekerProfileScreen() {
                 <Ionicons name="time-outline" size={20} color="#D97706" />
                 <Text style={[styles.listItemText, { color: '#D97706', flex: 1 }]}>Admin təsdiqi gözlənilir...</Text>
               </View>
-            ) : roleSwitchReq?.status === 'rejected' ? (
-              <View style={{ paddingHorizontal: 4, paddingVertical: 6 }}>
-                <View style={styles.listItem}>
-                  <Ionicons name="close-circle-outline" size={20} color="#DC2626" />
-                  <Text style={[styles.listItemText, { color: '#DC2626', flex: 1 }]}>Sorğu rədd edildi</Text>
-                </View>
-                {roleSwitchReq?.reviewer_note ? (
-                  <Text style={{ color: '#94A3B8', fontSize: 12, paddingLeft: 36, paddingBottom: 4 }}>
-                    {roleSwitchReq.reviewer_note}
-                  </Text>
-                ) : null}
-                <TouchableOpacity
-                  style={[styles.listItem, { paddingTop: 4 }]}
-                  onPress={() => { setSwitchCompanyName(''); setSwitchCategory(''); setSwitchModalOpen(true); }}
-                >
-                  <Ionicons name="refresh-outline" size={20} color="#2563EB" />
-                  <Text style={[styles.listItemText, { color: '#2563EB' }]}>Yenidən sorğu göndər</Text>
-                </TouchableOpacity>
-              </View>
             ) : (
               <TouchableOpacity
                 style={styles.listItem}

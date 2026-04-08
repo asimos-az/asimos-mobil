@@ -455,7 +455,7 @@ export function EmployerProfileScreen() {
                onPress={() => {
                  showAlert(
                    'İş axtarana keç',
-                   'Diqqət: Büm büta elanlarınız və məlumatlarınız silinməkün. Bu gəri alına bilməz. Dəvam etmək istəyirsinizmi?',
+                   'Diqqət: Bütün elanlarınız və məlumatlarınız silinəcək. Bu geri alına bilməz. Davam etmək istəyirsinizmi?',
                    [
                      { text: 'İmtina', style: 'cancel' },
                      { text: 'Bəli, keç', style: 'destructive', onPress: handleSwitchToSeeker },
