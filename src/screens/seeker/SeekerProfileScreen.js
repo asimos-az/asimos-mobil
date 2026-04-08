@@ -23,6 +23,7 @@ import { useAlert } from "../../context/AlertContext";
 import { MapPicker } from "../../components/MapPicker";
 import { Input } from "../../components/Input";
 import { PrimaryButton } from "../../components/PrimaryButton";
+import { SelectField } from "../../components/SelectField";
 import { registerForPushNotificationsAsync } from "../../utils/pushNotifications";
 import { getDeviceLocationOrNull } from "../../utils/deviceLocation";
 import { api } from "../../api/client";
@@ -219,6 +220,31 @@ export function SeekerProfileScreen() {
   const [switchCompanyName, setSwitchCompanyName] = useState('');
   const [switchCategory, setSwitchCategory] = useState('');
   const [switchLoading, setSwitchLoading] = useState(false);
+  const [switchCategoryOptions, setSwitchCategoryOptions] = useState([]);
+  const [switchCategoriesLoading, setSwitchCategoriesLoading] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setSwitchCategoriesLoading(true);
+        const res = await api.listCategories();
+        const items = Array.isArray(res?.items) ? res.items : [];
+        const out = [];
+        for (const p of items) {
+          if (p?.name) out.push(String(p.name));
+          const children = Array.isArray(p?.children) ? p.children : [];
+          for (const c of children) {
+            if (c?.name) out.push(`↳ ${String(c.name)}`);
+          }
+        }
+        if (alive) setSwitchCategoryOptions(out);
+      } catch { } finally {
+        if (alive) setSwitchCategoriesLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   function openEdit(field, val) {
     setEditField(field);
@@ -358,10 +384,16 @@ export function SeekerProfileScreen() {
               autoFocus
             />
             <View style={{ height: 8 }} />
-            <Input
+            <SelectField
+              label=""
               value={switchCategory}
-              onChangeText={setSwitchCategory}
-              placeholder="Sahə / kateqoriya (istəyə görə)"
+              onChange={(v) => {
+                const raw = String(v || '');
+                setSwitchCategory(raw.startsWith('↳ ') ? raw.slice(2) : raw);
+              }}
+              placeholder="Kateqoriya seç (istəyə görə)"
+              options={switchCategoryOptions}
+              loading={switchCategoriesLoading}
             />
             <View style={{ marginTop: 12 }}>
               <PrimaryButton
