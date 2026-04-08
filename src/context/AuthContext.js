@@ -242,6 +242,16 @@ export function AuthProvider({ children }) {
       }
     },
 
+    refreshSession: async () => {
+      const currentRefresh = refreshToken;
+      if (!currentRefresh) throw new Error("No refresh token");
+      const refreshed = await api.refresh(currentRefresh);
+      const nextUser = { ...(refreshed.user || user || {}) };
+      nextUser.role = normalizeRole(nextUser.role) || null;
+      await persist(refreshed.token, refreshed.refreshToken || currentRefresh, nextUser);
+      return nextUser;
+    },
+
     signOut: async () => {
       setIsSigningOut(true);
 

@@ -30,7 +30,7 @@ import { styles } from "./SeekerProfileScreen.styles";
 
 export function SeekerProfileScreen() {
   const navigation = useNavigation();
-  const { user, signOut, updateLocation, isSigningOut } = useAuth();
+  const { user, signOut, updateLocation, isSigningOut, refreshSession } = useAuth();
   const { showAlert } = useAlert();
   const toast = useToast();
 
@@ -214,6 +214,12 @@ export function SeekerProfileScreen() {
   const [updateLoading, setUpdateLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  const [roleSwitchReq, setRoleSwitchReq] = useState(null);
+  const [switchModalOpen, setSwitchModalOpen] = useState(false);
+  const [switchCompanyName, setSwitchCompanyName] = useState('');
+  const [switchCategory, setSwitchCategory] = useState('');
+  const [switchLoading, setSwitchLoading] = useState(false);
+
   function openEdit(field, val) {
     setEditField(field);
     setEditValue(val || "");
@@ -256,6 +262,52 @@ export function SeekerProfileScreen() {
     }
   }
 
+  useEffect(() => {
+    let alive = true;
+    async function checkSwitchStatus() {
+      try {
+        const res = await api.getRoleSwitchStatus().catch(() => null);
+        if (!alive) return;
+        if (res?.request?.status === 'approved') {
+          await refreshSession().catch(() => {});
+          return;
+        }
+        setRoleSwitchReq(res?.request || null);
+      } catch {}
+    }
+    checkSwitchStatus();
+    const unsub = navigation.addListener?.('focus', checkSwitchStatus);
+    return () => { alive = false; if (unsub) unsub(); };
+  }, []);
+
+  async function handleRequestRoleSwitch() {
+    const name = switchCompanyName.trim();
+    if (!name) {
+      toast.show('Şirkət / müəssisə adını daxil edin', 'error');
+      return;
+    }
+    if (switchLoading) return;
+    setSwitchLoading(true);
+    try {
+      const res = await api.requestRoleSwitch({ toRole: 'employer', companyName: name, category: switchCategory.trim() || undefined });
+      setSwitchModalOpen(false);
+      setSwitchCompanyName('');
+      setSwitchCategory('');
+      if (res?.pending) {
+        setRoleSwitchReq({ status: 'pending', company_name: name });
+        toast.show('Sorğunuz admina göndərildi', 'success');
+      }
+    } catch (e) {
+      if (e?.status === 409) {
+        setRoleSwitchReq({ status: 'pending' });
+        setSwitchModalOpen(false);
+      }
+      toast.show(e?.message || 'Xəta baş verdi', 'error');
+    } finally {
+      setSwitchLoading(false);
+    }
+  }
+
   return (
     <SafeScreen style={styles.safeArea}>
       <MapPicker
@@ -287,6 +339,39 @@ export function SeekerProfileScreen() {
             />
             <TouchableOpacity style={styles.modalClose} onPress={() => setSoundPickerOpen(false)}>
               <Text style={styles.modalCloseText}>Bağla</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={switchModalOpen} transparent animationType="fade" onRequestClose={() => setSwitchModalOpen(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setSwitchModalOpen(false)}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>İşçi axtaran ol</Text>
+            <Text style={{ color: '#64748B', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>
+              Şirkət / müəssisə adını daxil edin. Sorğunuz admin tərəfindən təsdiqlənəcək.
+            </Text>
+            <Input
+              value={switchCompanyName}
+              onChangeText={setSwitchCompanyName}
+              placeholder="Şirkət / müəssisə adı *"
+              autoFocus
+            />
+            <View style={{ height: 8 }} />
+            <Input
+              value={switchCategory}
+              onChangeText={setSwitchCategory}
+              placeholder="Sahə / kateqoriya (istəyə görə)"
+            />
+            <View style={{ marginTop: 12 }}>
+              <PrimaryButton
+                title="Sorğu göndər"
+                onPress={handleRequestRoleSwitch}
+                loading={switchLoading}
+              />
+            </View>
+            <TouchableOpacity style={styles.modalClose} onPress={() => setSwitchModalOpen(false)}>
+              <Text style={styles.modalCloseText}>İmtina</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
@@ -423,6 +508,40 @@ export function SeekerProfileScreen() {
                 {deleteLoading ? "Silinir..." : "Hesabı sil"}
               </Text>
             </TouchableOpacity>
+            <View style={styles.divider} />
+            {roleSwitchReq?.status === 'pending' ? (
+              <View style={styles.listItem}>
+                <Ionicons name="time-outline" size={20} color="#D97706" />
+                <Text style={[styles.listItemText, { color: '#D97706', flex: 1 }]}>Admin təsdiqi gözlənilir...</Text>
+              </View>
+            ) : roleSwitchReq?.status === 'rejected' ? (
+              <View style={{ paddingHorizontal: 4, paddingVertical: 6 }}>
+                <View style={styles.listItem}>
+                  <Ionicons name="close-circle-outline" size={20} color="#DC2626" />
+                  <Text style={[styles.listItemText, { color: '#DC2626', flex: 1 }]}>Sorğu rədd edildi</Text>
+                </View>
+                {roleSwitchReq?.reviewer_note ? (
+                  <Text style={{ color: '#94A3B8', fontSize: 12, paddingLeft: 36, paddingBottom: 4 }}>
+                    {roleSwitchReq.reviewer_note}
+                  </Text>
+                ) : null}
+                <TouchableOpacity
+                  style={[styles.listItem, { paddingTop: 4 }]}
+                  onPress={() => { setSwitchCompanyName(''); setSwitchCategory(''); setSwitchModalOpen(true); }}
+                >
+                  <Ionicons name="refresh-outline" size={20} color="#2563EB" />
+                  <Text style={[styles.listItemText, { color: '#2563EB' }]}>Yenidən sorğu göndər</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.listItem}
+                onPress={() => { setSwitchCompanyName(''); setSwitchCategory(''); setSwitchModalOpen(true); }}
+              >
+                <Ionicons name="briefcase-outline" size={20} color="#2563EB" />
+                <Text style={[styles.listItemText, { color: '#2563EB' }]}>İşçi axtaran ol</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 

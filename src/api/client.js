@@ -188,6 +188,8 @@ export const api = {
   createAlert: (payload) => request("/me/alerts", { method: "POST", body: payload }),
   deleteAlert: (id) => request(`/me/alerts/${encodeURIComponent(String(id))}`, { method: "DELETE" }),
   deleteMyAccount: (reason) => request("/me/account", { method: "DELETE", body: reason ? { reason } : {} }),
+  requestRoleSwitch: (payload) => request("/me/request-role-switch", { method: "POST", body: payload }),
+  getRoleSwitchStatus: () => request("/me/role-switch-status"),
 
   listTickets: () => request("/support"),
   getSupportStats: () => request("/support/stats"),

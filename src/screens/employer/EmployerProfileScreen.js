@@ -28,7 +28,7 @@ import { styles } from "./EmployerProfileScreen.styles";
 
 export function EmployerProfileScreen() {
   const navigation = useNavigation();
-  const { user, signOut, updateLocation, isSigningOut } = useAuth();
+  const { user, signOut, updateLocation, isSigningOut, refreshSession } = useAuth();
   const { showAlert } = useAlert();
   const toast = useToast();
 
@@ -206,6 +206,7 @@ export function EmployerProfileScreen() {
   const [editValue, setEditValue] = useState("");
   const [updateLoading, setUpdateLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [switchLoading, setSwitchLoading] = useState(false);
 
   function openEdit(field, val) {
     setEditField(field);
@@ -246,6 +247,20 @@ export function EmployerProfileScreen() {
       toast.show(e?.message || "Hesab silinmədi", "error");
     } finally {
       setDeleteLoading(false);
+    }
+  }
+
+  async function handleSwitchToSeeker() {
+    if (switchLoading) return;
+    setSwitchLoading(true);
+    try {
+      await api.requestRoleSwitch({ toRole: 'seeker' });
+      await refreshSession();
+      toast.show('Hesabınız iş axtarana keçirildi', 'success');
+    } catch (e) {
+      toast.show(e?.message || 'Xəta baş verdi', 'error');
+    } finally {
+      setSwitchLoading(false);
     }
   }
 
@@ -432,6 +447,26 @@ export function EmployerProfileScreen() {
                 <Text style={[styles.listItemText, styles.listItemDangerText]}>
                   {deleteLoading ? "Silinir..." : "Hesabı sil"}
                 </Text>
+             </TouchableOpacity>
+             <View style={styles.divider} />
+             <TouchableOpacity
+               style={styles.listItem}
+               disabled={switchLoading}
+               onPress={() => {
+                 showAlert(
+                   'İş axtarana keç',
+                   'Diqqət: Büm büta elanlarınız və məlumatlarınız silinməkün. Bu gəri alına bilməz. Dəvam etmək istəyirsinizmi?',
+                   [
+                     { text: 'İmtina', style: 'cancel' },
+                     { text: 'Bəli, keç', style: 'destructive', onPress: handleSwitchToSeeker },
+                   ]
+                 );
+               }}
+             >
+               <Ionicons name="person-outline" size={20} color="#2563EB" />
+               <Text style={[styles.listItemText, { color: '#2563EB' }]}>
+                 {switchLoading ? 'Dəyişilir...' : 'İş axtaran ol'}
+               </Text>
              </TouchableOpacity>
           </View>
         </View>
