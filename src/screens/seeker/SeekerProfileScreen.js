@@ -212,6 +212,7 @@ export function SeekerProfileScreen() {
   const [editField, setEditField] = useState(""); // 'fullName' or 'phone'
   const [editValue, setEditValue] = useState("");
   const [updateLoading, setUpdateLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   function openEdit(field, val) {
     setEditField(field);
@@ -238,6 +239,20 @@ export function SeekerProfileScreen() {
       toast.show(e?.message || "Xəta baş verdi", "error");
     } finally {
       setUpdateLoading(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteLoading) return;
+    setDeleteLoading(true);
+    try {
+      await api.deleteMyAccount("İstifadəçi tətbiqdən hesabını sildi");
+      toast.show("Hesabınız silindi", "success");
+      await signOut();
+    } catch (e) {
+      toast.show(e?.message || "Hesab silinmədi", "error");
+    } finally {
+      setDeleteLoading(false);
     }
   }
 
@@ -318,21 +333,15 @@ export function SeekerProfileScreen() {
           <Text style={styles.userEmail}>{user?.email || "Email qeyd edilməyib"}</Text>
         </View>
 
-        {/* MINIMAL STATS */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statLine}>
-            <Text style={styles.statValue}>{stats.totalNotifs}</Text>
-            <Text style={styles.statLabel}>Bildiriş</Text>
+        {/* STATS */}
+        <View style={styles.statsRow}>
+          <View style={[styles.statCard, styles.statCardBlue]}>
+            <Text style={[styles.statValue, styles.statValueBlue]}>{stats.totalNotifs}</Text>
+            <Text style={[styles.statLabel, styles.statLabelBlue]}>Bildiriş</Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statLine}>
-            <Text style={styles.statValue}>{stats.unread}</Text>
-            <Text style={styles.statLabel}>Oxunmamış</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statLine}>
-            <Text style={styles.statValue}>{stats.hasLoc ? "Var" : "Yoxdur"}</Text>
-            <Text style={styles.statLabel}>GPS</Text>
+          <View style={[styles.statCard, styles.statCardGreen]}>
+            <Text style={[styles.statValue, styles.statValueGreen]}>{stats.unread}</Text>
+            <Text style={[styles.statLabel, styles.statLabelGreen]}>Oxunmamış</Text>
           </View>
         </View>
 
@@ -397,6 +406,22 @@ export function SeekerProfileScreen() {
             }}>
               <Ionicons name="log-out-outline" size={20} color="#DC2626" />
               <Text style={[styles.listItemText, styles.listItemDangerText]}>Çıxış</Text>
+            </TouchableOpacity>
+            <View style={styles.divider} />
+            <TouchableOpacity
+              style={styles.listItem}
+              disabled={deleteLoading}
+              onPress={() => {
+                showAlert("Hesabı Sil", "Hesabınızı silməyə əminsinizmi?", [
+                  { text: "Xeyir", style: "cancel" },
+                  { text: "Bəli", style: "destructive", onPress: handleDeleteAccount },
+                ]);
+              }}
+            >
+              <Ionicons name="trash-outline" size={20} color="#DC2626" />
+              <Text style={[styles.listItemText, styles.listItemDangerText]}>
+                {deleteLoading ? "Silinir..." : "Hesabı sil"}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

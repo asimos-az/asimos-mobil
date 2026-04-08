@@ -141,14 +141,15 @@ export function SeekerJobsListScreen() {
     });
   }, [items, minWage, maxWage, selectedCategories]);
 
-  async function loadList(locOverride, pageNumber = 1) {
+  async function loadList(locOverride, pageNumber = 1, qOverride = null) {
     try {
       const loc = locOverride || baseLocation || user?.location;
       if (pageNumber === 1) setLoading(true);
       else setLoadingMore(true);
 
+      const effectiveQ = qOverride !== null ? String(qOverride || "").trim() : (q?.trim() || "");
       const data = await api.listJobsWithSearch({
-        q: q?.trim() || "",
+        q: effectiveQ,
         lat: loc?.lat,
         lng: loc?.lng,
         radius_m: (radius > 0 && loc?.lat && loc?.lng) ? radius : undefined,
@@ -240,9 +241,9 @@ export function SeekerJobsListScreen() {
         baseLocation={location}
         onPickLocation={() => setMapOpen(true)}
         onReset={resetFilters}
-        onApply={() => {
+        onApply={(nextQ) => {
           setFilterOpen(false);
-          loadList();
+          loadList(null, 1, nextQ ?? null);
         }}
         onClose={() => setFilterOpen(false)}
       />
@@ -303,6 +304,8 @@ export function SeekerJobsListScreen() {
             <JobCard
               job={item}
               onPress={() => navigation.navigate("JobDetail", { job: item })}
+              showEdit={(item?.createdBy || item?.created_by) === user?.id}
+              onEdit={() => navigation.navigate("SeekerCreateAd", { job: item })}
             />
           )}
         />
@@ -317,7 +320,6 @@ export function SeekerJobsListScreen() {
               onPress={() => navigation.navigate('SeekerMap', { jobs: items, userLocation: baseLocation })}
             >
               <Ionicons name="map" size={20} color="#fff" />
-              <Text style={styles.floatBtnText}>Xəritə</Text>
             </Pressable>
           </View>
         ) : null
@@ -395,28 +397,23 @@ const styles = StyleSheet.create({
 
   floatBtnWrap: {
     position: 'absolute',
-    bottom: 90,
-    alignSelf: 'center',
+    bottom: 72,
+    right: 16,
     zIndex: 99
   },
   floatBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#111827',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 50,
-    gap: 8,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 6
-  },
-  floatBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15
   },
   tab: {
     flex: 1,

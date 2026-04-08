@@ -205,6 +205,7 @@ export function EmployerProfileScreen() {
   const [editField, setEditField] = useState(""); // 'fullName' or 'phone'
   const [editValue, setEditValue] = useState("");
   const [updateLoading, setUpdateLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   function openEdit(field, val) {
     setEditField(field);
@@ -231,6 +232,20 @@ export function EmployerProfileScreen() {
       toast.show(e?.message || "Xəta baş verdi", "error");
     } finally {
       setUpdateLoading(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteLoading) return;
+    setDeleteLoading(true);
+    try {
+      await api.deleteMyAccount("İstifadəçi tətbiqdən hesabını sildi");
+      toast.show("Hesabınız silindi", "success");
+      await signOut();
+    } catch (e) {
+      toast.show(e?.message || "Hesab silinmədi", "error");
+    } finally {
+      setDeleteLoading(false);
     }
   }
 
@@ -309,7 +324,7 @@ export function EmployerProfileScreen() {
             </TouchableOpacity>
           </View>
           <Text style={styles.userEmail}>{user?.email || "Email qeyd edilməyib"}</Text>
-          <Text style={styles.userCompany}>{user?.companyName ? `HR • ${user.companyName}` : "HR"}</Text>
+          {user?.companyName ? <Text style={styles.userCompany}>{user.companyName}</Text> : null}
         </View>
 
         {/* MINIMAL STATS */}
@@ -401,6 +416,22 @@ export function EmployerProfileScreen() {
              }}>
                 <Ionicons name="log-out-outline" size={20} color="#DC2626" />
                 <Text style={[styles.listItemText, styles.listItemDangerText]}>Çıxış</Text>
+             </TouchableOpacity>
+             <View style={styles.divider} />
+             <TouchableOpacity
+               style={styles.listItem}
+               disabled={deleteLoading}
+               onPress={() => {
+                 showAlert("Hesabı Sil", "Hesabınızı silməyə əminsinizmi?", [
+                   { text: "Xeyir", style: "cancel" },
+                   { text: "Bəli", style: "destructive", onPress: handleDeleteAccount },
+                 ]);
+               }}
+             >
+                <Ionicons name="trash-outline" size={20} color="#DC2626" />
+                <Text style={[styles.listItemText, styles.listItemDangerText]}>
+                  {deleteLoading ? "Silinir..." : "Hesabı sil"}
+                </Text>
              </TouchableOpacity>
           </View>
         </View>

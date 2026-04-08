@@ -170,6 +170,7 @@ export const api = {
   listJobsWithSearch: ({ q, lat, lng, radius_m, daily, jobType, minWage, maxWage, categories, page, limit }) => request(`/jobs${qs({ q, lat, lng, radius_m, daily, jobType, minWage, maxWage, categories: Array.isArray(categories) ? categories.join(",") : categories, page, limit })}`),
   getJobById: (id) => request(`/jobs/${encodeURIComponent(String(id))}`),
   createJob: (payload) => request("/jobs", { method: "POST", body: payload }),
+  updateJob: (id, payload) => request(`/jobs/${encodeURIComponent(String(id))}`, { method: "PATCH", body: payload }),
   closeJob: (id, { reason } = {}) => request(`/jobs/${encodeURIComponent(String(id))}/close`, { method: "PATCH", body: { reason } }),
   reopenJob: (id) => request(`/jobs/${encodeURIComponent(String(id))}/reopen`, { method: "PATCH" }),
 
@@ -186,6 +187,7 @@ export const api = {
   listMyAlerts: () => request("/me/alerts"),
   createAlert: (payload) => request("/me/alerts", { method: "POST", body: payload }),
   deleteAlert: (id) => request(`/me/alerts/${encodeURIComponent(String(id))}`, { method: "DELETE" }),
+  deleteMyAccount: (reason) => request("/me/account", { method: "DELETE", body: reason ? { reason } : {} }),
 
   listTickets: () => request("/support"),
   getSupportStats: () => request("/support/stats"),

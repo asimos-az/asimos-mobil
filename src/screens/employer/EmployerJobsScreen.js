@@ -192,6 +192,7 @@ export function EmployerJobsScreen() {
           <EmployerJobCard
             job={item}
             onPress={() => navigation.navigate("JobDetail", { job: item })}
+            onEdit={(job) => navigation.navigate("EmployerCreateJob", { job })}
             onToggleStatus={toggleJob}
             loading={loading}
           />
@@ -221,7 +222,7 @@ export function EmployerJobsScreen() {
   );
 
   return (
-    <SafeScreen>
+    <SafeScreen edges={["left", "right", "bottom"]}>
       <View style={styles.body}>
         <View style={{ marginBottom: 16 }}>
           <SegmentedControl

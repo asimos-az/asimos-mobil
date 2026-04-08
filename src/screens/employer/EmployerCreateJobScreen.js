@@ -15,6 +15,7 @@ import { MapPicker } from "../../components/MapPicker";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Platform } from "react-native";
+import { useRoute } from "@react-navigation/native";
 
 const MS_DAY = 24 * 60 * 60 * 1000;
 
@@ -26,6 +27,10 @@ function formatClock(ts) {
 }
 
 export function EmployerCreateJobScreen({ navigation }) {
+  const route = useRoute();
+  const editJob = route.params?.job || null;
+  const isEditMode = !!editJob?.id;
+
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
@@ -56,6 +61,51 @@ export function EmployerCreateJobScreen({ navigation }) {
 
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [categoryOptions, setCategoryOptions] = useState([]); // string[] (names, flattened)
+
+  function hydrateFromJob(sourceJob) {
+    if (!sourceJob) return;
+    const jt = sourceJob?.jobType || sourceJob?.job_type || (sourceJob?.isDaily ? "temporary" : "permanent");
+    const d = Number(sourceJob?.durationDays ?? sourceJob?.duration_days ?? 1);
+    const preset = [1, 3, 10].includes(d) ? String(d) : "other";
+    const pub = sourceJob?.publishedAt || sourceJob?.published_at;
+
+    setTitle(sourceJob?.title || "");
+    setWage(sourceJob?.wage || "");
+    setCategory(sourceJob?.category || "");
+    setWhatsapp(sourceJob?.whatsapp || "+994");
+    setPhone(sourceJob?.phone || "+994");
+    setLink(sourceJob?.link || "");
+    setVoen(sourceJob?.voen || "");
+    setDescription(sourceJob?.description || "");
+    setCompanyName(sourceJob?.companyName || sourceJob?.company_name || user?.companyName || "");
+    setJobType(jt || "permanent");
+    setDurationPreset(preset);
+    setDurationOther(preset === "other" ? String(d || "") : "");
+    if (sourceJob?.location) setLocation(sourceJob.location);
+    setNotifyRadiusM(String(sourceJob?.notifyRadiusM ?? sourceJob?.notify_radius_m ?? 500));
+    setScheduleEnabled(!!pub);
+    if (pub) setPublishedAt(new Date(pub).getTime());
+  }
+
+  useEffect(() => {
+    if (!isEditMode) return;
+    hydrateFromJob(editJob);
+  }, [isEditMode, editJob?.id, user?.companyName]);
+
+  useEffect(() => {
+    if (!isEditMode || !editJob?.id) return;
+    let alive = true;
+    (async () => {
+      try {
+        const fresh = await api.getJobById(editJob.id);
+        if (alive && fresh) hydrateFromJob(fresh);
+      } catch {
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [isEditMode, editJob?.id, user?.companyName]);
 
   useEffect(() => {
     let alive = true;
@@ -98,12 +148,12 @@ export function EmployerCreateJobScreen({ navigation }) {
 
     import("../../utils/deviceLocation").then(({ getDeviceLocationOrNull }) => {
       getDeviceLocationOrNull().then(loc => {
-        if (loc) {
+        if (loc && !isEditMode) {
           setLocation(loc);
         }
       });
     });
-  }, []);
+  }, [isEditMode]);
   const [notifyRadiusM, setNotifyRadiusM] = useState("500");
   const [mapOpen, setMapOpen] = useState(false);
 
@@ -157,7 +207,7 @@ export function EmployerCreateJobScreen({ navigation }) {
         return;
       }
 
-      const res = await api.createJob({
+      const payload = {
         title,
         wage,
         category,
@@ -181,12 +231,16 @@ export function EmployerCreateJobScreen({ navigation }) {
         publishedAt: scheduleEnabled ? new Date(publishedAt).toISOString() : null,
         createdBy: user.id,
         location,
-      });
+      };
+
+      const res = isEditMode
+        ? await api.updateJob(editJob.id, payload)
+        : await api.createJob(payload);
 
       if (res?.job?.status === 'pending') {
-        toast.show("Elanınız yaradıldı, yoxlanılması üçün admin təsdiqi gözləyin", "success");
+        toast.show(isEditMode ? "Elan yeniləndi və yenidən yoxlanışa göndərildi" : "Elanınız yaradıldı, yoxlanılması üçün admin təsdiqi gözləyin", "success");
       } else {
-        toast.show("Elan yaradıldı.", "success");
+        toast.show(isEditMode ? "Elan yeniləndi." : "Elan yaradıldı.", "success");
       }
       navigation.goBack();
     } catch (e) {
@@ -218,7 +272,7 @@ export function EmployerCreateJobScreen({ navigation }) {
           <Ionicons name="chevron-back" size={26} color={Colors.text} />
         </Pressable>
 
-        <Text style={styles.title}>Elan yarat</Text>
+        <Text style={styles.title}>{isEditMode ? "Elanı redaktə et" : "Elan yarat"}</Text>
 
         {/* right-side spacer so title stays visually centered */}
         <View style={{ width: 44 }} />
@@ -515,7 +569,7 @@ export function EmployerCreateJobScreen({ navigation }) {
           <Text style={styles.help}>Bu radiusda (metr) olan bütün iş axtaranlara push bildiriş gedəcək.</Text>
 
           <View style={{ height: 14 }} />
-          <PrimaryButton title="Yarat" loading={loading} onPress={submit} />
+          <PrimaryButton title={isEditMode ? "Yadda saxla" : "Yarat"} loading={loading} onPress={submit} />
         </Card>
       </ScrollView>
     </SafeScreen>

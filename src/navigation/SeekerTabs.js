@@ -6,7 +6,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../theme/colors";
 import { SeekerJobsListScreen } from "../screens/seeker/SeekerJobsListScreen";
 import { SeekerDailyJobsScreen } from "../screens/seeker/SeekerDailyJobsScreen";
-import { SeekerMapScreen } from "../screens/seeker/SeekerMapScreen";
 import { SeekerProfileScreen } from "../screens/seeker/SeekerProfileScreen";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api/client";
@@ -51,7 +50,6 @@ function SeekerHeaderRight() {
 const tabs = {
   SeekerJobs: { icon: "search-outline", iconActive: "search", label: "Jobs" },
   SeekerDaily: { icon: "calendar-outline", iconActive: "calendar", label: "Daily" },
-  SeekerMap: { icon: "pie-chart-outline", iconActive: "pie-chart", label: "Map" },
   SeekerProfile: { icon: "person-outline", iconActive: "person", label: "Profile" },
 };
 
@@ -124,11 +122,6 @@ export function SeekerTabs() {
         name="SeekerDaily" 
         component={SeekerDailyJobsScreen} 
         options={{ headerShown: false }}
-      />
-      <Tab.Screen 
-        name="SeekerMap" 
-        component={SeekerMapScreen} 
-        options={{ headerShown: false }} 
       />
       <Tab.Screen
         name="SeekerProfile"

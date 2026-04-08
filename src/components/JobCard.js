@@ -22,7 +22,7 @@ function formatDate(isoString) {
   return `${day}.${month}.${year}`;
 }
 
-export function JobCard({ job, onPress, showDailyBadge = true }) {
+export function JobCard({ job, onPress, showDailyBadge = true, showEdit = false, onEdit }) {
   const isDaily = !!job?.isDaily;
   const distDisplay = formatDistance(job?.distanceM);
   const companyLabel = job?.company || "Asimos İşəgötürən";
@@ -54,6 +54,11 @@ export function JobCard({ job, onPress, showDailyBadge = true }) {
               <Text style={styles.title} numberOfLines={1}>{job?.title || "Vakansiya"}</Text>
            </View>
            <View style={{ alignItems: "flex-end" }}>
+              {showEdit ? (
+                <Pressable onPress={onEdit} style={styles.editBtn} hitSlop={8}>
+                  <Ionicons name="create-outline" size={14} color={Colors.primary} />
+                </Pressable>
+              ) : null}
               {dateDisplay ? <Text style={styles.dateText}>{dateDisplay}</Text> : null}
               {distDisplay ? <Text style={styles.statusText}>{distDisplay} uzaqda</Text> : <Text style={styles.statusText}>Ətraflı bax</Text>}
            </View>
@@ -176,6 +181,17 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
     marginBottom: 2,
     fontWeight: "500",
+  },
+  editBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    marginBottom: 4,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
   },
   currencyText: {
     fontSize: 12,

@@ -46,10 +46,7 @@ function EmployerJobsHeaderRight() {
   }, []);
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginRight: 16 }}>
-      <Pressable onPress={() => navigation.navigate("EmployerMap")} hitSlop={10}>
-        <Ionicons name="map-outline" size={24} color={Colors.primary} />
-      </Pressable>
+    <View style={{ flexDirection: "row", alignItems: "center", marginRight: 16 }}>
       <NotificationBell count={unread} onPress={() => navigation.navigate("EmployerNotifications")} />
     </View>
   );

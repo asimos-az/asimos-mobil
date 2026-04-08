@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../theme/colors";
 
-export function EmployerJobCard({ job, onPress, onToggleStatus, loading, readonly = false }) {
+export function EmployerJobCard({ job, onPress, onToggleStatus, onEdit, loading, readonly = false }) {
     const isDaily = job.isDaily;
 
     const statusConfig = useMemo(() => ({
@@ -124,6 +124,15 @@ export function EmployerJobCard({ job, onPress, onToggleStatus, loading, readonl
                 {!readonly && (
                     <View style={styles.footer}>
                         <Pressable
+                            style={[styles.actionBtn, styles.btnEdit]}
+                            onPress={() => onEdit?.(job)}
+                            disabled={loading}
+                        >
+                            <Ionicons name="create-outline" size={14} color={Colors.primary} />
+                            <Text style={[styles.actionText, { color: Colors.primary }]}>Redaktə et</Text>
+                        </Pressable>
+
+                        <Pressable
                             style={[styles.actionBtn, isClosed ? styles.btnReopen : styles.btnClose]}
                             onPress={() => onToggleStatus(job)}
                             disabled={loading}
@@ -233,6 +242,7 @@ const styles = StyleSheet.create({
         borderTopColor: "#F3F4F6",
         flexDirection: "row",
         justifyContent: "flex-end",
+        gap: 10,
     },
     actionBtn: {
         flexDirection: "row",
@@ -244,6 +254,7 @@ const styles = StyleSheet.create({
     },
     btnClose: { backgroundColor: "#FEF2F2" },
     btnReopen: { backgroundColor: "#F0FDF4" },
+    btnEdit: { backgroundColor: Colors.primarySoft },
     actionText: {
         fontSize: 13,
         fontWeight: "600",

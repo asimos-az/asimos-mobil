@@ -112,11 +112,15 @@ export function JobDetailScreen() {
   const publishDate = job?.publishedAt || job?.published_at || job?.created_at || job?.createdAt;
   const dateDisplay = formatDate(publishDate);
   const rawWage = job?.wage ? String(job.wage).replace(/AZN|₼/gi, "").trim() : null;
+  const ownerId = job?.createdBy || job?.created_by;
 
   const status = (job.status || job.jobStatus || "open").toLowerCase();
   const isOwnerEmployer = useMemo(() => {
-    return user?.role === "employer" && !!job?.createdBy && job.createdBy === user?.id;
-  }, [user?.role, user?.id, job?.createdBy]);
+    return user?.role === "employer" && !!ownerId && ownerId === user?.id;
+  }, [user?.role, user?.id, ownerId]);
+  const isOwnerSeeker = useMemo(() => {
+    return user?.role === "seeker" && !!ownerId && ownerId === user?.id;
+  }, [user?.role, user?.id, ownerId]);
 
   async function closeJob() {
     Alert.alert(
@@ -181,7 +185,15 @@ export function JobDetailScreen() {
           <Text style={styles.backText}>Geri</Text>
         </Pressable>
         <Text style={styles.title}>Detallar</Text>
-        <View style={{ width: 60 }} />
+        {isOwnerSeeker ? (
+          <Pressable
+            onPress={() => navigation.navigate("SeekerCreateAd", { job })}
+            style={styles.editHeadBtn}
+            hitSlop={8}
+          >
+            <Ionicons name="create-outline" size={20} color={Colors.primary} />
+          </Pressable>
+        ) : <View style={{ width: 60 }} />}
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 28 }}>
@@ -217,6 +229,28 @@ export function JobDetailScreen() {
                     <Text style={[styles.actionBtnText, { color: "#fff" }]}>Elanı bağla</Text>
                   </Pressable>
                 )}
+              </View>
+            </View>
+          ) : null}
+
+          {isOwnerSeeker ? (
+            <View style={{ marginTop: 10 }}>
+              <Text style={styles.meta}>Status: {
+                status === "pending" ? "Gözləyir (Yoxlanışda)" :
+                  status === "scheduled" ? "Planlı (Tarix/Saat gözlənir)" :
+                    status === "closed" ? "Bağlı" :
+                      "Aktiv"
+              }</Text>
+              <View style={styles.actions}>
+                <Pressable
+                  onPress={() => navigation.navigate("SeekerCreateAd", { job })}
+                  style={[styles.actionBtn, styles.actionBtnPrimary]}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Ionicons name="create-outline" size={16} color={Colors.text} />
+                    <Text style={styles.actionBtnText}>Elanı redaktə et</Text>
+                  </View>
+                </Pressable>
               </View>
             </View>
           ) : null}
@@ -397,6 +431,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primarySoft,
   },
   backText: { color: Colors.primary, fontWeight: "900" },
+  editHeadBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: Colors.primarySoft,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
   badge: {

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRoute } from "@react-navigation/native";
 
 import { SafeScreen } from "../../components/SafeScreen";
 import { Colors } from "../../theme/colors";
@@ -14,15 +15,19 @@ import { PrimaryButton } from "../../components/PrimaryButton";
 import { MapPicker } from "../../components/MapPicker";
 
 export function SeekerCreateAdScreen({ navigation }) {
+    const route = useRoute();
+    const editJob = route.params?.job || null;
+    const isEditMode = !!editJob?.id;
+
     const { user } = useAuth();
     const [loading, setLoading] = useState(false);
 
-    const [title, setTitle] = useState("");
-    const [wage, setWage] = useState("");
-    const [category, setCategory] = useState("");
-    const [whatsapp, setWhatsapp] = useState(user?.phone || "+994");
-    const [phone, setPhone] = useState(user?.phone || "+994");
-    const [description, setDescription] = useState("");
+    const [title, setTitle] = useState(editJob?.title || "");
+    const [wage, setWage] = useState(editJob?.wage || "");
+    const [category, setCategory] = useState(editJob?.category || "");
+    const [whatsapp, setWhatsapp] = useState(editJob?.whatsapp || user?.phone || "+994");
+    const [phone, setPhone] = useState(editJob?.phone || user?.phone || "+994");
+    const [description, setDescription] = useState(editJob?.description || "");
 
     const [categoriesLoading, setCategoriesLoading] = useState(false);
     const [categoryOptions, setCategoryOptions] = useState([]);
@@ -53,16 +58,27 @@ export function SeekerCreateAdScreen({ navigation }) {
         return () => { alive = false; };
     }, []);
 
-    const [location, setLocation] = useState(user.location || null);
+    const [location, setLocation] = useState(editJob?.location || user.location || null);
     const [mapOpen, setMapOpen] = useState(false);
+
+    useEffect(() => {
+        if (!isEditMode) return;
+        setTitle(editJob?.title || "");
+        setWage(editJob?.wage || "");
+        setCategory(editJob?.category || "");
+        setWhatsapp(editJob?.whatsapp || user?.phone || "+994");
+        setPhone(editJob?.phone || user?.phone || "+994");
+        setDescription(editJob?.description || "");
+        setLocation(editJob?.location || user?.location || null);
+    }, [isEditMode, editJob?.id, user?.phone, user?.location]);
 
     useEffect(() => {
         import("../../utils/deviceLocation").then(({ getDeviceLocationOrNull }) => {
             getDeviceLocationOrNull().then(loc => {
-                if (loc) setLocation(loc);
+                if (loc && !isEditMode) setLocation(loc);
             });
         });
-    }, []);
+    }, [isEditMode]);
 
     const toast = useToast();
 
@@ -79,7 +95,7 @@ export function SeekerCreateAdScreen({ navigation }) {
                 return;
             }
 
-            await api.createJob({
+            const payload = {
                 title,
                 wage,
                 category,
@@ -90,9 +106,15 @@ export function SeekerCreateAdScreen({ navigation }) {
                 notifyRadiusM: 0, // No notification blast for seeker ads
                 createdBy: user.id,
                 location,
-            });
+            };
 
-            Alert.alert("Uğurlu", "Elanınız yerləşdirildi.");
+            if (isEditMode) {
+                await api.updateJob(editJob.id, payload);
+            } else {
+                await api.createJob(payload);
+            }
+
+            Alert.alert("Uğurlu", isEditMode ? "Elan yeniləndi." : "Elanınız yerləşdirildi.");
             navigation.goBack();
         } catch (e) {
             toast.show(e.message, "error");
@@ -118,7 +140,7 @@ export function SeekerCreateAdScreen({ navigation }) {
                 >
                     <Ionicons name="chevron-back" size={26} color={Colors.text} />
                 </Pressable>
-                <Text style={styles.title}>İş elanı yerləşdir</Text>
+                <Text style={styles.title}>{isEditMode ? "Elanı redaktə et" : "İş elanı yerləşdir"}</Text>
                 <View style={{ width: 44 }} />
             </View>
 
@@ -192,7 +214,7 @@ export function SeekerCreateAdScreen({ navigation }) {
                     />
 
                     <View style={{ height: 14 }} />
-                    <PrimaryButton title="Yerləşdir" loading={loading} onPress={submit} />
+                    <PrimaryButton title={isEditMode ? "Yadda saxla" : "Yerləşdir"} loading={loading} onPress={submit} />
                 </Card>
             </ScrollView>
         </SafeScreen>

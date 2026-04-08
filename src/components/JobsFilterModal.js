@@ -7,6 +7,8 @@ import { Card } from "./Card";
 import { Colors } from "../theme/colors";
 import { SelectField } from "./SelectField";
 
+const KEYWORD_SEP = "|||";
+
 function Chip({ label, active, onPress, onRemove }) {
   return (
     <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive, onRemove && { paddingRight: 8 }]}>
@@ -49,21 +51,34 @@ export function JobsFilterModal({
   const [keywordInput, setKeywordInput] = useState("");
   const keywordTags = useMemo(() => {
     if (!q || !q.trim()) return [];
-    return q.split(" ").filter(Boolean);
+    if (String(q).includes(KEYWORD_SEP)) {
+      return String(q).split(KEYWORD_SEP).map((x) => x.trim()).filter(Boolean);
+    }
+    return [String(q).trim()].filter(Boolean);
   }, [q]);
 
   const handleAddKeyword = () => {
     const val = keywordInput.trim();
     if (val && !keywordTags.includes(val)) {
-      const newQuery = [...keywordTags, val].join(" ");
+      const newQuery = [...keywordTags, val].join(KEYWORD_SEP);
       setQ(newQuery);
     }
     setKeywordInput("");
   };
 
   const handleRemoveKeyword = (kw) => {
-    const newQuery = keywordTags.filter(k => k !== kw).join(" ");
+    const newQuery = keywordTags.filter(k => k !== kw).join(KEYWORD_SEP);
     setQ(newQuery);
+  };
+
+  const handleApply = () => {
+    const typed = keywordInput.trim();
+    const nextTags = [...keywordTags];
+    if (typed && !nextTags.includes(typed)) nextTags.push(typed);
+    const nextQ = nextTags.join(KEYWORD_SEP).trim();
+    setQ(nextQ);
+    setKeywordInput("");
+    onApply?.(nextQ);
   };
 
   const locLabel = useMemo(() => {
@@ -216,8 +231,8 @@ export function JobsFilterModal({
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.submitBtn} onPress={onApply}>
-                <Text style={styles.submitText}>Tətbiq et</Text>
+            <TouchableOpacity style={styles.submitBtn} onPress={handleApply}>
+              <Text style={styles.submitText}>Axtar</Text>
             </TouchableOpacity>
 
             <Pressable onPress={onReset} style={{ marginTop: 16 }}>

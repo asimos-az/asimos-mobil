@@ -287,6 +287,15 @@ export function SeekerDailyJobsScreen() {
           )}
         />
       </View>
+
+      <View style={styles.floatBtnWrap}>
+        <Pressable
+          style={styles.floatBtn}
+          onPress={() => navigation.navigate('SeekerMap', { jobs: items, userLocation: baseLocation, daily: true })}
+        >
+          <Ionicons name="map" size={20} color="#fff" />
+        </Pressable>
+      </View>
     </SafeScreen>
   );
 }
@@ -334,4 +343,24 @@ const styles = StyleSheet.create({
 
   body: { flex: 1, paddingHorizontal: 16, paddingTop: 10 },
   empty: { color: Colors.muted, textAlign: "center", marginTop: 40, fontWeight: "700", fontSize: 15 },
+
+  floatBtnWrap: {
+    position: 'absolute',
+    bottom: 72,
+    right: 16,
+    zIndex: 99
+  },
+  floatBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#111827',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6
+  },
 });

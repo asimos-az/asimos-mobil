@@ -7,8 +7,6 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import * as Location from "expo-location";
 import { api } from "../../api/client";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { JobsFilterModal } from "../../components/JobsFilterModal";
-import { MapPicker } from "../../components/MapPicker";
 import * as Notifications from "expo-notifications";
 
 const RADIUS_PRESETS = [
@@ -25,6 +23,7 @@ export function SeekerMapScreen() {
   
   const initialJobs = route.params?.jobs;
   const userLocation = route.params?.userLocation || null;
+  const dailyOnly = route.params?.daily || false;
 
   const [jobs, setJobs] = useState(initialJobs || []);
   const [loading, setLoading] = useState(true);
@@ -88,17 +87,19 @@ export function SeekerMapScreen() {
     setSelectedCategories([]);
   }
 
-  const loadJobs = async () => {
+  const loadJobs = async (qOverride = null) => {
     setLoading(true);
     try {
+      const effectiveQ = qOverride !== null ? String(qOverride || "").trim() : String(q || "").trim();
       const data = await api.listJobsWithSearch({ 
-        q, 
+        q: effectiveQ,
         radius_m: radius > 0 ? radius : undefined,
         minWage: minWage || undefined,
         maxWage: maxWage || undefined,
         categories: selectedCategories.length > 0 ? selectedCategories : undefined,
         lat: (filterLocation || userLocation)?.lat,
         lng: (filterLocation || userLocation)?.lng,
+        daily: dailyOnly || undefined,
       });
       setJobs(data);
     } catch (e) {
@@ -242,6 +243,30 @@ export function SeekerMapScreen() {
     .pulsing-circle {
        animation: pulse 2s infinite;
     }
+    .metro-marker {
+      background:#E53935;color:white;border-radius:50%;
+      width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+      font-weight:900;font-size:11px;border:2px solid white;
+      box-shadow:0 2px 6px rgba(0,0,0,0.35);
+    }
+    .uni-marker {
+      background:#7C3AED;color:white;border-radius:8px;
+      width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+      font-size:13px;border:2px solid white;
+      box-shadow:0 2px 6px rgba(0,0,0,0.35);
+    }
+    .custom-tooltip {
+      background: white !important;
+      border: none !important;
+      border-radius: 10px !important;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18) !important;
+      padding: 8px 12px !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+      font-size: 13px !important;
+      color: #111827 !important;
+      white-space: nowrap !important;
+    }
+    .custom-tooltip::before { display: none !important; }
   </style>
 </head>
 <body>
@@ -252,20 +277,30 @@ export function SeekerMapScreen() {
     <div class="card-close" id="card-close">✕</div>
     <div class="card-title" id="card-title"></div>
     <div class="card-meta">
-       <span class="card-bg-icon">📍</span>
-       <span id="card-dist"></span>
+       <span class="card-bg-icon">�</span>
+       <span id="card-drive">Hesablanır...</span>
+    </div>
+    <div class="card-meta">
+       <span class="card-bg-icon">🚶</span>
+       <span id="card-walk">Hesablanır...</span>
     </div>
     <div class="card-meta">
        <span class="card-bg-icon">💰</span>
        <span id="card-wage"></span>
     </div>
+    <div class="card-meta" id="card-metro-row" style="display:none;flex-direction:column;gap:3px;align-items:flex-start;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:8px"><span>🚇</span><span id="card-metro" style="font-size:13px;color:#374151"></span></div>
+    </div>
+    <div class="card-meta" id="card-uni-row" style="display:none;margin-bottom:16px">
+      <span>🎓</span><span id="card-uni" style="font-size:13px;color:#374151"></span>
+    </div>
     <div class="card-actions">
        <button class="card-btn primary" id="card-btn">Detallara bax</button>
-       <button class="card-btn" id="gmap-btn" style="flex:0; padding:0 14px; background:#E5E7EB; margin-left:4px; display:flex; align-items:center; justify-content:center;">
-           <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Google_Maps_icon.svg" width="22" height="22" alt="Google Maps" />
+       <button class="card-btn" id="gmap-btn" style="flex:0;padding:0 12px;background:#4285F4;color:white;margin-left:4px;display:flex;align-items:center;justify-content:center;border-radius:16px;font-size:12px;font-weight:700;gap:4px;">
+         <svg width="16" height="16" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="white"/><circle cx="12" cy="9" r="2.5" fill="#4285F4"/></svg>Maps
        </button>
-       <button class="card-btn" id="waze-btn" style="flex:0; padding:0 14px; background:#E5E7EB; margin-left:4px; display:flex; align-items:center; justify-content:center;">
-           <img src="https://upload.wikimedia.org/wikipedia/commons/8/81/Waze_logo.svg" width="22" height="22" alt="Waze" />
+       <button class="card-btn" id="waze-btn" style="flex:0;padding:0 12px;background:#33CCFF;color:white;margin-left:4px;display:flex;align-items:center;justify-content:center;border-radius:16px;font-size:12px;font-weight:700;gap:4px;">
+         <svg width="16" height="16" viewBox="0 0 24 24"><ellipse cx="12" cy="11" rx="8" ry="7" fill="white" opacity="0.9"/><circle cx="9.5" cy="10" r="1.2" fill="#33CCFF"/><circle cx="14.5" cy="10" r="1.2" fill="#33CCFF"/><path d="M9 13.5 Q12 15.5 15 13.5" stroke="#33CCFF" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>Waze
        </button>
     </div>
   </div>
@@ -327,11 +362,73 @@ export function SeekerMapScreen() {
       window.updateMe(uLat, uLng);
     }
 
+    // Haversine distance in meters
+    function haversine(lat1, lng1, lat2, lng2) {
+      var R = 6371000;
+      var dLat = (lat2-lat1)*Math.PI/180;
+      var dLng = (lng2-lng1)*Math.PI/180;
+      var a = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+    function fmtDist(d) { return d < 1000 ? Math.round(d) + 'm' : (d/1000).toFixed(1) + 'km'; }
+
+    var metros = [
+      {name:'İçərişəhər',          lat:40.3658, lng:49.8338},
+      {name:'Sahil',               lat:40.3714, lng:49.8422},
+      {name:'28 May',              lat:40.3797, lng:49.8484},
+      {name:'Gənclik',             lat:40.3880, lng:49.8519},
+      {name:'Nəriman Nərimanov',   lat:40.3987, lng:49.8535},
+      {name:'Ulduz',               lat:40.4048, lng:49.8659},
+      {name:'Koroğlu',             lat:40.4113, lng:49.8768},
+      {name:'Xalqlar Dostluğu',    lat:40.4062, lng:49.8809},
+      {name:'Neftçilər',           lat:40.4062, lng:49.8874},
+      {name:'Həzi Aslanov',        lat:40.4048, lng:49.9008},
+      {name:'Əhmədli',             lat:40.4065, lng:49.9152},
+      {name:'Hövsan',              lat:40.3895, lng:49.9395},
+      {name:'8 Noyabr',            lat:40.3800, lng:49.8390},
+      {name:'Memar Əcəmi',         lat:40.3945, lng:49.8215},
+      {name:'İnşaatçılar',         lat:40.4000, lng:49.8228},
+      {name:'Avtovağzal',          lat:40.4077, lng:49.8297},
+      {name:'Dərnəgül',            lat:40.4127, lng:49.8388},
+    ];
+
+    var universities = [
+      {name:'Bakı Dövlət Universiteti',       lat:40.3793, lng:49.8419},
+      {name:'ADNSU',                           lat:40.3835, lng:49.8453},
+      {name:'AzTU',                            lat:40.3862, lng:49.8523},
+      {name:'UNEC',                            lat:40.3929, lng:49.8504},
+      {name:'Xəzər Universiteti',              lat:40.3693, lng:49.8365},
+      {name:'ATU (Tibb Universiteti)',         lat:40.4026, lng:49.8623},
+      {name:'Pedaqoji Universitet',            lat:40.4068, lng:49.8476},
+      {name:'ADA Universiteti',               lat:40.3705, lng:49.8397},
+      {name:'Slavyan Universiteti',            lat:40.3824, lng:49.8444},
+      {name:'Müdafiə Universiteti',            lat:40.3955, lng:49.8534},
+    ];
+
+    metros.forEach(function(st) {
+      var icon = L.divIcon({ className: '', html: '<div class="metro-marker">M</div>', iconSize:[26,26], iconAnchor:[13,13] });
+      L.marker([st.lat, st.lng], { icon: icon, zIndexOffset: 100 })
+        .bindTooltip('<b>🚇 ' + st.name + '</b><br><span style="font-size:11px;color:#6B7280">Metro stansiyası</span>', {
+          direction: 'top', offset: [0, -10], opacity: 1,
+          className: 'custom-tooltip'
+        })
+        .addTo(map);
+    });
+
+    universities.forEach(function(u) {
+      var icon = L.divIcon({ className: '', html: '<div class="uni-marker">🎓</div>', iconSize:[28,28], iconAnchor:[14,14] });
+      L.marker([u.lat, u.lng], { icon: icon, zIndexOffset: 100 })
+        .bindTooltip('<b>🎓 ' + u.name + '</b><br><span style="font-size:11px;color:#6B7280">Universitet</span>', {
+          direction: 'top', offset: [0, -10], opacity: 1,
+          className: 'custom-tooltip'
+        })
+        .addTo(map);
+    });
+
     let currentRoute = null;
     let selectedJob = null;
 
-    const boundsArr = [];
-    if(uLat && uLng) boundsArr.push([uLat, uLng]);
+    const jobBounds = [];
 
     jobs.forEach(j => {
       const jobIcon = L.divIcon({
@@ -342,7 +439,7 @@ export function SeekerMapScreen() {
         
       const m = L.marker([j.lat, j.lng], { icon: jobIcon }).addTo(map);
       j.marker = m; 
-      boundsArr.push([j.lat, j.lng]);
+      jobBounds.push([j.lat, j.lng]);
       
       m.on('click', () => {
         selectJob(j);
@@ -366,8 +463,12 @@ export function SeekerMapScreen() {
       }
     };
 
-    if(boundsArr.length > 0) {
-      map.fitBounds(boundsArr, { padding: [50, 50] });
+    if(jobBounds.length > 1) {
+      map.fitBounds(jobBounds, { padding: [60, 120] });
+    } else if (jobBounds.length === 1) {
+      map.setView(jobBounds[0], 16, { animate: true });
+    } else if (uLat && uLng) {
+      map.setView([uLat, uLng], 14, { animate: true });
     }
 
     function selectJob(job) {
@@ -375,7 +476,20 @@ export function SeekerMapScreen() {
       
       document.getElementById('card-title').innerText = job.title;
       document.getElementById('card-wage').innerText = job.wage || 'Razılaşma ilə';
-      document.getElementById('card-dist').innerText = 'Hesablanır...';
+      document.getElementById('card-drive').innerText = 'Hesablanır...';
+      document.getElementById('card-walk').innerText = 'Hesablanır...';
+
+      // Nearest 2 metro stations
+      var sortedMetros = metros.slice().sort(function(a,b){ return haversine(job.lat,job.lng,a.lat,a.lng) - haversine(job.lat,job.lng,b.lat,b.lng); });
+      var metroText = sortedMetros.slice(0,2).map(function(m){ return m.name + ' (' + fmtDist(haversine(job.lat,job.lng,m.lat,m.lng)) + ')'; }).join('  •  ');
+      document.getElementById('card-metro').innerText = metroText;
+      document.getElementById('card-metro-row').style.display = 'flex';
+
+      // Nearest university
+      var nearUni = universities.slice().sort(function(a,b){ return haversine(job.lat,job.lng,a.lat,a.lng) - haversine(job.lat,job.lng,b.lat,b.lng); })[0];
+      document.getElementById('card-uni').innerText = nearUni.name + ' (' + fmtDist(haversine(job.lat,job.lng,nearUni.lat,nearUni.lng)) + ')';
+      document.getElementById('card-uni-row').style.display = 'flex';
+
       document.getElementById('info-card').className = 'visible';
       send('jobSelected', true);
       
@@ -391,16 +505,20 @@ export function SeekerMapScreen() {
         }).on('routesfound', function(e) {
           const r = e.routes[0];
           const distM = r.summary.totalDistance;
-          let distStr = Math.round(distM) + ' m';
-          if (distM >= 1000) {
-            const km = distM/1000;
-            distStr = Number.isInteger(km) ? km + ' km' : km.toFixed(1) + ' km';
-          }
-          const time = Math.round(r.summary.totalTime / 60);
-          document.getElementById('card-dist').innerText = distStr + ' • ~' + time + ' dəq (piyada)';
+          let distStr = distM < 1000 ? Math.round(distM) + ' m' : (distM/1000).toFixed(1) + ' km';
+          // Driving time from OSRM (car profile)
+          const driveMin = Math.round(r.summary.totalTime / 60);
+          document.getElementById('card-drive').innerText = distStr + ' • ~' + driveMin + ' dəq';
+          // Walking time: 5 km/h = 83.3 m/min
+          const walkMin = Math.round(distM / 83.3);
+          const walkHr = Math.floor(walkMin / 60);
+          const walkRem = walkMin % 60;
+          const walkStr = walkHr > 0 ? walkHr + ' saat ' + (walkRem > 0 ? walkRem + ' dəq' : '') : walkMin + ' dəq';
+          document.getElementById('card-walk').innerText = distStr + ' • ~' + walkStr;
         }).addTo(map);
       } else {
-        document.getElementById('card-dist').innerText = 'Məsafə naməlumdur';
+        document.getElementById('card-drive').innerText = 'Məsafə naməlumdur';
+        document.getElementById('card-walk').innerText = '';
       }
     }
 
@@ -429,39 +547,7 @@ export function SeekerMapScreen() {
 
   return (
     <View style={styles.container}>
-      <JobsFilterModal
-        visible={filterOpen}
-        title="Filtrlər"
-        q={q}
-        setQ={setQ}
-        minWage={minWage}
-        setMinWage={setMinWage}
-        maxWage={maxWage}
-        setMaxWage={setMaxWage}
-        radius={radius}
-        setRadius={setRadius}
-        radiusOptions={radiusOptions}
-        categories={categories}
-        selectedCategories={selectedCategories}
-        toggleCategory={toggleCategory}
-        baseLocation={filterLocation || userLocation}
-        onPickLocation={() => setMapOpen(true)}
-        onReset={resetFilters}
-        onApply={() => {
-          setFilterOpen(false);
-          loadJobs();
-        }}
-        onClose={() => setFilterOpen(false)}
-      />
-      <MapPicker
-        visible={mapOpen}
-        initial={filterLocation || userLocation}
-        userLocation={userLocation}
-        onClose={() => setMapOpen(false)}
-        onPicked={(loc) => {
-          setFilterLocation(loc);
-        }}
-      />
+
 
       <WebView
         ref={webRef}
@@ -575,28 +661,15 @@ export function SeekerMapScreen() {
           <Ionicons name="remove" size={24} color="#111" />
         </Pressable>
 
-        <Pressable style={[styles.circleBtn, { marginBottom: 12 }]} onPress={() => {
-            webRef.current?.injectJavaScript(`window.centerMap(); true;`);
-        }}>
-          <Ionicons name="location-outline" size={24} color="#111" />
-        </Pressable>
-        <Pressable style={styles.circleBtn} onPress={() => setFilterOpen(true)}>
-          <Ionicons name="options-outline" size={24} color="#111" />
-          {hasActiveFilters ? <View style={styles.dot} /> : null}
-        </Pressable>
       </View>
       )}
 
       <View style={[styles.floatingBottomCenter, { bottom: insets.bottom + 95 }]}>
-        <Pressable style={styles.pillBtn} onPress={() => nav.navigate('SeekerJobs')}>
+        <Pressable style={styles.pillBtn} onPress={() => nav.goBack()}>
           <Ionicons name="list" size={20} color="#111" />
           <Text style={styles.pillText}>Siyahı</Text>
         </Pressable>
-        <Pressable style={styles.pillBtn} onPress={() => setFilterOpen(true)}>
-          <Ionicons name="search" size={20} color="#111" />
-          <Text style={styles.pillText}>Axtar</Text>
-          {hasActiveFilters ? <View style={styles.dotPill} /> : null}
-        </Pressable>
+
       </View>
     </View>
   );

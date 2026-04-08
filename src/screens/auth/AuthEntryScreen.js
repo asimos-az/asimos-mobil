@@ -9,7 +9,7 @@ import { PrimaryButton } from "../../components/PrimaryButton";
 import { Colors } from "../../theme/colors";
 import { useAuth } from "../../context/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { API_BASE_URL, api } from "../../api/client";
+import { api } from "../../api/client";
 import { Ionicons } from "@expo/vector-icons";
 import { styles } from "./AuthEntryScreen.styles";
 
@@ -137,8 +137,7 @@ export function AuthEntryScreen() {
         }
       }
     } catch (e) {
-      const apiInfo = typeof __DEV__ !== "undefined" && __DEV__ ? `\n\nAPI: ${API_BASE_URL}` : "";
-      Alert.alert("Xəta", (e?.message || "Bir xəta oldu") + apiInfo);
+      Alert.alert("Xəta", e?.message || "Bir xəta oldu");
     } finally {
       setLoading(false);
     }
