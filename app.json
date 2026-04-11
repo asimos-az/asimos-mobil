@@ -5,7 +5,7 @@
     "scheme": "asimos",
     "version": "1.2.0",
     "orientation": "portrait",
-    "icon": "./assets/logo.jpeg",
+    "icon": "./assets/logo.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/transparent_splash.png",
@@ -18,17 +18,14 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Lokasiya icazəsi elanları sənin yaxınlığında göstərmək üçün lazımdır.",
-        "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true
-        }
+        "NSLocationWhenInUseUsageDescription": "Lokasiya icazəsi elanları sənin yaxınlığında göstərmək üçün lazımdır."
       },
       "bundleIdentifier": "com.asimos.asimos"
     },
     "android": {
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.jpeg",
+        "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#F5F6F8"
       },
       "permissions": [
@@ -42,7 +39,6 @@
       "googleServicesFile": "./google-services.json"
     },
     "plugins": [
-      "expo-dev-client",
       "expo-notifications",
       [
         "expo-location",
@@ -53,7 +49,7 @@
       "@react-native-community/datetimepicker"
     ],
     "web": {
-      "favicon": "./assets/logo.jpeg"
+      "favicon": "./assets/logo.png"
     },
     "extra": {
       "eas": {
