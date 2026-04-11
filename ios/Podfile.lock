@@ -2078,7 +2078,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNReanimated (4.1.6):
+  - RNReanimated (4.1.7):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2100,10 +2100,10 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNReanimated/reanimated (= 4.1.6)
+    - RNReanimated/reanimated (= 4.1.7)
     - RNWorklets
     - Yoga
-  - RNReanimated/reanimated (4.1.6):
+  - RNReanimated/reanimated (4.1.7):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2125,10 +2125,10 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNReanimated/reanimated/apple (= 4.1.6)
+    - RNReanimated/reanimated/apple (= 4.1.7)
     - RNWorklets
     - Yoga
-  - RNReanimated/reanimated/apple (4.1.6):
+  - RNReanimated/reanimated/apple (4.1.7):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2244,7 +2244,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNWorklets (0.7.4):
+  - RNWorklets (0.5.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2266,9 +2266,9 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNWorklets/worklets (= 0.7.4)
+    - RNWorklets/worklets (= 0.5.1)
     - Yoga
-  - RNWorklets/worklets (0.7.4):
+  - RNWorklets/worklets (0.5.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2290,9 +2290,9 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
-    - RNWorklets/worklets/apple (= 0.7.4)
+    - RNWorklets/worklets/apple (= 0.5.1)
     - Yoga
-  - RNWorklets/worklets/apple (0.7.4):
+  - RNWorklets/worklets/apple (0.5.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2703,10 +2703,10 @@ SPEC CHECKSUMS:
   RNCAsyncStorage: 3a4f5e2777dae1688b781a487923a08569e27fe4
   RNDateTimePicker: be0e44bcb9ed0607c7c5f47dbedd88cf091f6791
   RNGestureHandler: 2914750df066d89bf9d8f48a10ad5f0051108ac3
-  RNReanimated: e5c702a3e24cc1c68b2de67671713f35461678f4
+  RNReanimated: 41f496c18437fd0aa841234917af84e98fd5b9a2
   RNScreens: d8d6f1792f6e7ac12b0190d33d8d390efc0c1845
   RNSVG: 31d6639663c249b7d5abc9728dde2041eb2a3c34
-  RNWorklets: eb8d899de8701d58c6a634b8468ce2a6db3113b2
+  RNWorklets: 76fce72926e28e304afb44f0da23b2d24f2c1fa0
   Yoga: 5934998fbeaef7845dbf698f698518695ab4cd1a
 
 PODFILE CHECKSUM: e6f55e597e20afa47813b7d25919f67151b0563a
