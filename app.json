@@ -43,7 +43,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
+          "locationAlwaysAndWhenInUsePermission": "Lokasiya icazəsi elanları sənin yaxınlığında göstərmək üçün lazımdır."
         }
       ],
       "@react-native-community/datetimepicker"
