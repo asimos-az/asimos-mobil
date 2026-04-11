@@ -218,6 +218,7 @@ export function SeekerProfileScreen() {
   const [roleSwitchReq, setRoleSwitchReq] = useState(null);
   const [switchModalOpen, setSwitchModalOpen] = useState(false);
   const [switchCompanyName, setSwitchCompanyName] = useState('');
+  const [switchVoen, setSwitchVoen] = useState('');
   const [switchCategory, setSwitchCategory] = useState('');
   const [switchLoading, setSwitchLoading] = useState(false);
   const [switchCategoryOptions, setSwitchCategoryOptions] = useState([]);
@@ -308,6 +309,7 @@ export function SeekerProfileScreen() {
 
   async function handleRequestRoleSwitch() {
     const name = switchCompanyName.trim();
+    const voen = switchVoen.trim();
     if (!name) {
       toast.show('Şirkət / müəssisə adını daxil edin', 'error');
       return;
@@ -315,9 +317,15 @@ export function SeekerProfileScreen() {
     if (switchLoading) return;
     setSwitchLoading(true);
     try {
-      const res = await api.requestRoleSwitch({ toRole: 'employer', companyName: name, category: switchCategory.trim() || undefined });
+      const res = await api.requestRoleSwitch({
+        toRole: 'employer',
+        companyName: name,
+        voen: voen || undefined,
+        category: switchCategory.trim() || undefined,
+      });
       setSwitchModalOpen(false);
       setSwitchCompanyName('');
+      setSwitchVoen('');
       setSwitchCategory('');
       if (res?.pending) {
         setRoleSwitchReq({ status: 'pending', company_name: name });
@@ -382,6 +390,14 @@ export function SeekerProfileScreen() {
               onChangeText={setSwitchCompanyName}
               placeholder="Şirkət / müəssisə adı *"
               autoFocus
+            />
+            <View style={{ height: 8 }} />
+            <Input
+              value={switchVoen}
+              onChangeText={(v) => setSwitchVoen(String(v || '').replace(/\D/g, ''))}
+              placeholder="VOEN (istəyə görə)"
+              keyboardType="number-pad"
+              maxLength={10}
             />
             <View style={{ height: 8 }} />
             <SelectField
@@ -549,7 +565,7 @@ export function SeekerProfileScreen() {
             ) : (
               <TouchableOpacity
                 style={styles.listItem}
-                onPress={() => { setSwitchCompanyName(''); setSwitchCategory(''); setSwitchModalOpen(true); }}
+                onPress={() => { setSwitchCompanyName(''); setSwitchVoen(''); setSwitchCategory(''); setSwitchModalOpen(true); }}
               >
                 <Ionicons name="briefcase-outline" size={20} color="#2563EB" />
                 <Text style={[styles.listItemText, { color: '#2563EB' }]}>İşçi axtaran ol</Text>
